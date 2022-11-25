@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"path": "WlanPing"
+		},
+		{
+			"path": "WlanPong"
+		},
+		{
+			"name": "SolarCurrentWiFi",
+			"path": "SolarCurrentWiFi"
+		}
+	],
+	"settings": {}
+}
