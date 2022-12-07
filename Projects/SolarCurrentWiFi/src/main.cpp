@@ -20,6 +20,7 @@ String HttpContentFunction();
 #define SolarCurrentPin 33
 
 void GetSolarValues() ;
+void printOut();
 
 double BattaryCurrent=0;
 double LoadCurrent = 0;
@@ -51,6 +52,11 @@ void loop()
 {
   wlanConnector->Process();    
   GetSolarValues() ;
+  //printOut();
+  //delay(5);
+}
+void printOut()
+{
   if (millis() - timer > maxtimer)
   {
      Serial.print(BattaryVoltage);
@@ -63,7 +69,6 @@ void loop()
      Serial.println("");
      timer = millis();
   }
-  //delay(5);
 }
 
 String tmpstr = "";
@@ -82,25 +87,22 @@ void GetSolarValues()
   
   double fileStrength = 0.05;
 
-   uint16_t potValue = analogRead(BattaryVoltagePin);
-   double x = potValue;
-   x = (85.458+0.443*x)/100;
-   BattaryVoltage = BattaryVoltage * (1-fileStrength) + x * fileStrength;
+   double x1 = analogRead(BattaryVoltagePin);
+   x1 = (85.458+0.443*x1)/100;
+   BattaryVoltage = BattaryVoltage * (1-fileStrength) + x1 * fileStrength;
 
-   
-   uint16_t potCur = analogRead(LoadCurrentPin);
-    x = potCur;
-    x = (1577.909 - 0.838*x)/100 - 0.27;
-    LoadCurrent = LoadCurrent * (1-fileStrength) + x * fileStrength;
+   double x2 =  analogRead(LoadCurrentPin);
+    x2 = (1577.909 - 0.838*x2)/100 - 0.27;
+    LoadCurrent = LoadCurrent * (1-fileStrength) + x2 * fileStrength;
 
-    potCur = analogRead(BattaryCurrentPin);
-    x = potCur;
-    x = (1577.909 - 0.838*x)/100 -0.31;
-    BattaryCurrent = BattaryCurrent * (1-fileStrength) + x * fileStrength;
+    double x3 =  analogRead(BattaryCurrentPin);
+    x3 = (-1.0)*((1577.909 - 0.838*x3)/100 -0.45);
+    BattaryCurrent = BattaryCurrent * (1-fileStrength) + x3 * fileStrength;
 
-   potCur = analogRead(SolarCurrentPin);
-    x = potCur;
-   x = (1577.909 - 0.838*x)/100;
-   SolarCurrent = SolarCurrent * (1-fileStrength) + x * fileStrength;
+   double x4 =  analogRead(SolarCurrentPin);
+   x4 = (-1.0)*((1577.909 - 0.838*x4)/100 -0.11);
+   SolarCurrent = SolarCurrent * (1-fileStrength) + x4 * fileStrength;
+
+
 
 }

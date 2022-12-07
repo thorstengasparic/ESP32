@@ -9,6 +9,10 @@
 		{
 			"name": "SolarCurrentWiFi",
 			"path": "SolarCurrentWiFi"
+		},
+		{
+			"name": "I2c_test",
+			"path": "I2c_test"
 		}
 	],
 	"settings": {}
