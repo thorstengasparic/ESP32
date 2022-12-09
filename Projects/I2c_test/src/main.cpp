@@ -15,6 +15,10 @@
 
 SDL_Arduino_INA3221 ina3221;
 
+
+//static const uint8_t SDA = 21;
+//static const uint8_t SCL = 22;
+
 // the three channels of the INA3221 named for SunAirPlus Solar Power Controller channels (www.switchdoc.com)
 #define LIPO_BATTERY_CHANNEL 1
 #define SOLAR_CELL_CHANNEL 2

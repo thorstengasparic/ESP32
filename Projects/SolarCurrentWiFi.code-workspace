@@ -13,6 +13,10 @@
 		{
 			"name": "I2c_test",
 			"path": "I2c_test"
+		},
+		{
+			"name": "SolarI2C-Current",
+			"path": "SolarI2C-Current"
 		}
 	],
 	"settings": {}
