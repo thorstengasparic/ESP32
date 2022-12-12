@@ -12,13 +12,12 @@ const String loadcurrent = "$loadcurrent$";
 
 String jsonHtmlPage = "{\n"
 "   \"solar\":{\n"
-"      \"batteryvoltage\":\""+batteryvoltage+"\",\n"
 "      \"batterycurrent\":\""+batterycurrent+"\",\n"
-"      \"solarvoltage\":\""+solarvoltage+"\",\n"
-"      \"solarcurrent\":\""+solarcurrent+"\",\n"
-"      \"loadvoltage\":\""+loadvoltage+"\",\n"
 "      \"loadcurrent\":\""+loadcurrent+"\",\n"
-
+"      \"solarcurrent\":\""+solarcurrent+"\",\n"
+"      \"batteryvoltage\":\""+batteryvoltage+"\",\n"
+"      \"loadvoltage\":\""+loadvoltage+"\",\n"
+"      \"solarvoltage\":\""+solarvoltage+"\",\n"
 "   }\n"
 "}";
 

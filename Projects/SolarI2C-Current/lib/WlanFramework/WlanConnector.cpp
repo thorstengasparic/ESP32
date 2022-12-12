@@ -165,6 +165,7 @@ void WlanConnector::Process()
   unsigned long currentMillis = millis();
   if ((currentMillis - lastMillis) > maxMillisTimer)
   {
+    this->resetWDT();
     if (AccessPointMode())
     {
       ProcessAccessPoint();
