@@ -19,5 +19,10 @@
 			"path": "SolarI2C-Current"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"files.associations": {
+			"*.tcc": "cpp",
+			"string": "cpp"
+		}
+	}
 }

@@ -7,11 +7,12 @@
 
 #include <EEPROMProvider.h>
 #include <WlanConnetor.h>
-#include <HTTPClient.h>
 
-#define VERSION "0.x"
+#define VERSION "1.0"
 
+#include <textreplacement.h>
 #include <jsonhtmlpage.h>
+#include <table.h>
 
 #define STATUS_LED 2
 #define wifiModePin 5
@@ -31,6 +32,10 @@ double LoadCurrent = 0;
 double LoadVoltage = 0;
 double SolarCurrent = 0;
 double SolarVoltage = 0;
+double SolarPower = 0;
+double BattaryPower = 0;
+double LoadPower = 0;
+double SumPower = 0;
 
 void printOut();
 
@@ -51,24 +56,23 @@ void setup()
 
   wlanConnector->SetCallback(HttpContentFunction);
 
+  
+  ina3221.begin();
+  Serial.print("Manufactures ID=0x");
+   int MID;
+   MID = ina3221.getManufID();
+   Serial.println(MID,HEX);
+
   eeprom->ArmVersionNumber();  
   wlanConnector->enableWDT(30);
   valueTimer = millis();
   timer = millis();
-  ina3221.begin();
-
-   Serial.print("Manufactures ID=0x");
-   int MID;
-   MID = ina3221.getManufID();
-   Serial.println(MID,HEX);
 } 
 
 void loop() 
 {
   wlanConnector->Process();    
   GetSolarValues() ;
-  //printOut();
-  //delay(5);
 }
 void printOut()
 {
@@ -86,20 +90,42 @@ void printOut()
   }
 }
 
-String tmpstr = "";
+//  String tmpstrJson = "";
+//  String HttpContentFunctionJson()
+//  {
+//   tmpstrJson = jsonHtmlPage;
+//   tmpstrJson.replace(batterycurrent, String (BattaryCurrent) );
+//   tmpstrJson.replace(loadcurrent, String (LoadCurrent) );
+//   tmpstrJson.replace(solarcurrent, String (SolarCurrent) );
+  
+//   tmpstrJson.replace(batteryvoltage, String (BattaryVoltage) );
+//   tmpstrJson.replace(loadvoltage, String (LoadVoltage) );
+//   tmpstrJson.replace(solarvoltage, String (SolarVoltage) );
+ 
+//   return tmpstrJson; 
+//  } 
+ 
+ String tmpstrJson = "";
  String HttpContentFunction()
  {
-  tmpstr = jsonHtmlPage;
-  tmpstr.replace(batterycurrent, String (BattaryCurrent) );
-  tmpstr.replace(loadcurrent, String (LoadCurrent) );
-  tmpstr.replace(solarcurrent, String (SolarCurrent) );
+  tmpstrJson = tableHtmlPage;
+  tmpstrJson.replace(batterycurrent, String (BattaryCurrent) );
+  tmpstrJson.replace(loadcurrent, String (LoadCurrent) );
+  tmpstrJson.replace(solarcurrent, String (SolarCurrent) );
   
-  tmpstr.replace(batteryvoltage, String (BattaryVoltage) );
-  tmpstr.replace(loadvoltage, String (LoadVoltage) );
-  tmpstr.replace(solarvoltage, String (SolarVoltage) );
+  tmpstrJson.replace(batteryvoltage, String (BattaryVoltage) );
+  tmpstrJson.replace(loadvoltage, String (LoadVoltage) );
+  tmpstrJson.replace(solarvoltage, String (SolarVoltage) );
+
+  tmpstrJson.replace(batterypower, String (BattaryPower) );
+  tmpstrJson.replace(loadpower, String (LoadPower) );
+  tmpstrJson.replace(solarpower, String (SolarPower) );
+
+  tmpstrJson.replace(sumpower, String (SumPower) );
   
- return tmpstr; 
+ return tmpstrJson; 
  } 
+
 
 void GetSolarValues() 
 {
@@ -110,17 +136,21 @@ void GetSolarValues()
       double shuntvoltage1 = ina3221.getShuntVoltage_mV(BATTERY_CHANNEL);
       BattaryCurrent = -ina3221.getCurrent_mA(BATTERY_CHANNEL);
       BattaryVoltage = busvoltage1 + (shuntvoltage1 / 1000);
+      BattaryPower = BattaryCurrent*BattaryVoltage;;
 
       double busvoltage2 = ina3221.getBusVoltage_V(LOAD_CHANNEL);
       double shuntvoltage2 = ina3221.getShuntVoltage_mV(LOAD_CHANNEL);
       LoadCurrent = ina3221.getCurrent_mA(LOAD_CHANNEL);
       LoadVoltage = busvoltage2 + (shuntvoltage2 / 1000);
+      LoadPower = LoadCurrent*LoadVoltage;
 
       double busvoltage3 = ina3221.getBusVoltage_V(SOLAR_CELL_CHANNEL);
       double shuntvoltage3 = ina3221.getShuntVoltage_mV(SOLAR_CELL_CHANNEL);
       SolarCurrent = -ina3221.getCurrent_mA(SOLAR_CELL_CHANNEL);
       SolarVoltage = busvoltage3 + (shuntvoltage3 / 1000);
-
+      SolarPower = SolarCurrent*SolarVoltage;
+      
+      SumPower = -(SolarPower +BattaryPower);
 
     //Serial.println(HttpContentFunction());
     //loopTest() ;
