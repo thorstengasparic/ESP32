@@ -64,6 +64,8 @@ WlanConnector *wlanConnector = NULL;
 //SDA	SDA
 //SCL	SCL
 
+//https://forum.arduino.cc/t/esp32-with-st7796s-4-0inch-tft-spi/640696
+
 
 
 void setup() 
