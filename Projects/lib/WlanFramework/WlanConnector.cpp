@@ -121,7 +121,7 @@ void  WlanConnector::ProcessWebserver()
     CheckReconnect();
     if (BlinkAlive&& (AliveModeBlink))
        (digitalRead(statusLED) == HIGH) ? digitalWrite(statusLED, LOW) : digitalWrite(statusLED, HIGH);  
-    Serial.println("Web server alive");
+    //Serial.println("Web server alive");
 }
 
 
@@ -165,6 +165,7 @@ void WlanConnector::Process()
   unsigned long currentMillis = millis();
   if ((currentMillis - lastMillis) > maxMillisTimer)
   {
+    this->resetWDT();
     if (AccessPointMode())
     {
       ProcessAccessPoint();

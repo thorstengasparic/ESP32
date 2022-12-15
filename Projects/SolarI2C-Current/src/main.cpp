@@ -1,18 +1,15 @@
 #include <Arduino.h>
 
-#include <Wire.h>
-#include "SDL_Arduino_INA3221.h"
-
+//#include <Wire.h>
+#include <SDL_Arduino_INA3221.h>
 #include <EEPROM.h>
-
 #include <EEPROMProvider.h>
 #include <WlanConnetor.h>
-
-#define VERSION "1.0"
-
 #include <textreplacement.h>
 #include <jsonhtmlpage.h>
 #include <table.h>
+
+#define VERSION "1.0"
 
 #define STATUS_LED 2
 #define wifiModePin 5
@@ -45,6 +42,29 @@ long maxtimer =1000;
 
 EEPROMProvider* eeprom = NULL;
 WlanConnector *wlanConnector = NULL;
+
+//SHT75 onewire
+//ESP32	Sensor
+//3v3	Vcc
+//Gnd	Gnd
+//SDA	SDA
+//SCL	SCL
+
+//AHT10 Temperatur- und Luftfeuchtesensor
+//Standard-I2C-Adresse: 0x38, kann auf 0x39 geändert werden
+//3v3	Vcc
+//Gnd	Gnd
+//SDA	SDA
+//SCL	SCL
+
+//BME280 Luftdruck-, Luftfeuchtigkeits- und Temperatursensor
+ //I²C Adresse lautet 0x77. 
+//3v3	Vcc
+//Gnd	Gnd
+//SDA	SDA
+//SCL	SCL
+
+
 
 void setup() 
 {
