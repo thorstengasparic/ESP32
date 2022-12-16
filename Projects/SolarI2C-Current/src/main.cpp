@@ -1,13 +1,15 @@
 #include <Arduino.h>
 
-//#include <Wire.h>
-#include <SDL_Arduino_INA3221.h>
-#include <EEPROM.h>
-#include <EEPROMProvider.h>
-#include <WlanConnetor.h>
-#include <textreplacement.h>
-#include <jsonhtmlpage.h>
-#include <table.h>
+// #include <Wire.h>
+ #include <INA3221.h>
+ #include <EEPROM.h>
+ #include <EEPROMProvider.h>
+ #include <WlanConnetor.h>
+ #include <textreplacement.h>
+ #include <jsonhtmlpage.h>
+ #include <table.h>
+
+SDL_Arduino_INA3221 ina3221;
 
 #define VERSION "1.0"
 
@@ -16,7 +18,6 @@
 String HttpContentFunction();
 void loopTest(void) ;
 
-SDL_Arduino_INA3221 ina3221;
 // //static const uint8_t SDA = 21;
 // //static const uint8_t SCL = 22;
 void GetSolarValues() ;
@@ -96,6 +97,7 @@ void loop()
   wlanConnector->Process();    
   GetSolarValues() ;
 }
+
 void printOut()
 {
   if (millis() - timer > maxtimer)
@@ -276,3 +278,4 @@ void loopTest(void)
 
 //  delay(2000);
 }
+
