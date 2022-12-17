@@ -1,6 +1,6 @@
 #include <Arduino.h>
 
-// #include <Wire.h>
+ #include <Wire.h>
  #include <INA3221.h>
  #include <EEPROM.h>
  #include <EEPROMProvider.h>
@@ -9,6 +9,12 @@
  #include <jsonhtmlpage.h>
  #include <table.h>
 
+#include <Adafruit_BMP280.h>
+#include <Adafruit_AHTX0.h>
+
+Adafruit_BMP280 bmp; // I2C
+
+Adafruit_AHTX0 aht;
 SDL_Arduino_INA3221 ina3221;
 
 #define VERSION "1.0"
@@ -20,7 +26,10 @@ void loopTest(void) ;
 
 // //static const uint8_t SDA = 21;
 // //static const uint8_t SCL = 22;
-void GetSolarValues() ;
+void GetValues() ;
+void GetSolarValues();
+void mesurePressure() ;
+void measure_bmp() ;
 #define BATTERY_CHANNEL 1
 #define LOAD_CHANNEL 2
 #define SOLAR_CELL_CHANNEL 3
@@ -59,7 +68,7 @@ WlanConnector *wlanConnector = NULL;
 //SCL	SCL
 
 //BME280 Luftdruck-, Luftfeuchtigkeits- und Temperatursensor
- //I²C Adresse lautet 0x77. 
+ //I²C Adresse lautet 0x77 / 76. 
 //3v3	Vcc
 //Gnd	Gnd
 //SDA	SDA
@@ -78,24 +87,47 @@ void setup()
   wlanConnector = new WlanConnector(wifiModePin, STATUS_LED, eeprom);
 
   wlanConnector->SetCallback(HttpContentFunction);
-
-  
-  ina3221.begin();
+/*
+ ina3221.begin();
   Serial.print("Manufactures ID=0x");
    int MID;
    MID = ina3221.getManufID();
    Serial.println(MID,HEX);
+*/
 
-  eeprom->ArmVersionNumber();  
-  wlanConnector->enableWDT(30);
-  valueTimer = millis();
-  timer = millis();
+  int cnt = 10;
+  if (! aht.begin()) 
+  {
+      Serial.println("Could not find AHTxy Check wiring");
+      //while (cnt--) delay(10);
+  }
+  Serial.println("AHT10 or AHT20 found");
+
+  cnt = 10;
+  if (!bmp.begin(BMP280_ADDRESS_ALT, BMP280_CHIPID)) {
+  //if (!bmp.begin()) {      
+    Serial.println(F("Could not find a valid BMP280 sensor, check wiring or "
+                        "try a different address!"));
+      while (cnt--) delay(10);
+  }
+
+    /* Default settings from datasheet. */
+    bmp.setSampling(Adafruit_BMP280::MODE_FORCED,     /* Operating Mode. */
+                    Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
+                    Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
+                    Adafruit_BMP280::FILTER_X16,      /* Filtering. */
+                    Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
+    
+    eeprom->ArmVersionNumber();  
+    wlanConnector->enableWDT(30);
+    valueTimer = millis();
+    timer = millis();
 } 
 
 void loop() 
 {
   wlanConnector->Process();    
-  GetSolarValues() ;
+  GetValues() ;
 }
 
 void printOut()
@@ -154,8 +186,7 @@ void printOut()
 void GetSolarValues() 
 {
   
-  if (millis() - valueTimer > maxtimer)
-  {
+  
       double busvoltage1 = ina3221.getBusVoltage_V(BATTERY_CHANNEL);
       double shuntvoltage1 = ina3221.getShuntVoltage_mV(BATTERY_CHANNEL);
       BattaryCurrent = -ina3221.getCurrent_mA(BATTERY_CHANNEL);
@@ -178,50 +209,24 @@ void GetSolarValues()
 
     //Serial.println(HttpContentFunction());
     //loopTest() ;
+  
+}
+
+void GetValues() 
+{
+  
+  if (millis() - valueTimer > maxtimer)
+  {
+      //GetSolarValues();
+
+      measure_bmp();
+      mesurePressure() ;
+
      valueTimer = millis();
   }
 }
 
 
-//   SDL_Arduino_INA3221 Library Test Code
-//   SDL_Arduino_INA3221.cpp Arduino code - runs in continuous mode
-//   Version 1.2
-//   SwitchDoc Labs   September 2019
-
-
-// This was designed for SunAirPlus - Solar Power Controller - www.switchdoc.com
-
-
-
-
-// #include <Wire.h>
-// #include "SDL_Arduino_INA3221.h"
-
-// SDL_Arduino_INA3221 ina3221;
-
-
-// //static const uint8_t SDA = 21;
-// //static const uint8_t SCL = 22;
-
-// // the three channels of the INA3221 named for SunAirPlus Solar Power Controller channels (www.switchdoc.com)
-// #define LIPO_BATTERY_CHANNEL 1
-// #define SOLAR_CELL_CHANNEL 2
-// #define OUTPUT_CHANNEL 3
-
-// void setup(void) 
-// {
-    
-//   Serial.begin(115200);
-//   Serial.println("SDA_Arduino_INA3221_Test");
-  
-//   Serial.println("Measuring voltage and current with ina3221 ...");
-//   ina3221.begin();
-
-//   Serial.print("Manufactures ID=0x");
-//   int MID;
-//   MID = ina3221.getManufID();
-//   Serial.println(MID,HEX);
-// }
 
 void loopTest(void) 
 {
@@ -276,6 +281,40 @@ void loopTest(void)
   Serial.print("Output Current 3:       "); Serial.print(current_mA3); Serial.println(" mA");
   Serial.println("");
 
-//  delay(2000);
+}
+
+
+
+void  mesurePressure() {
+  sensors_event_t humidity, temp;
+  aht.getEvent(&humidity, &temp);// populate temp and humidity objects with fresh data
+  Serial.print("Temperature: "); Serial.print(temp.temperature); Serial.println(" degrees C");
+  Serial.print("Humidity: "); Serial.print(humidity.relative_humidity); Serial.println("% rH");
+
+}
+
+void measure_bmp() {
+  // must call this to wake sensor up and get new measurement data
+  // it blocks until measurement is complete
+  if (bmp.takeForcedMeasurement()) {
+    // can now print out the new measurements
+    Serial.print(F("Temperature = "));
+    Serial.print(bmp.readTemperature());
+    Serial.println(" *C");
+
+    Serial.print(F("Pressure = "));
+    Serial.print(bmp.readPressure());
+    Serial.println(" Pa");
+
+    Serial.print(F("seaLevelForAltitude = "));
+    Serial.print(bmp.seaLevelForAltitude(190.0,bmp.readPressure())); 
+    Serial.println(" Pa");
+
+    Serial.println();
+    
+  } else {
+    Serial.println("Forced measurement failed!");
+  }
+
 }
 
