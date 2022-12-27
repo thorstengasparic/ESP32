@@ -14,7 +14,9 @@ WlanConnector::WlanConnector()
 
 WlanConnector::WlanConnector(uint8_t accesPointPinIn, uint8_t statusLed, EEPROMProvider* eepromIn)
 {
-  webserver = new WebServer(stdPort);
+  Serial.println("1");
+  //webserver = new WebServer(stdPort);
+  Serial.println("2");
   contentCallback = NULL;
 
   for (int i = 0; i< maxOptions; i++) options[i] =0;
@@ -31,14 +33,21 @@ WlanConnector::WlanConnector(uint8_t accesPointPinIn, uint8_t statusLed, EEPROMP
   lastMillis = 0;
 
   #define maxbufferlen 32
-  passwordWlanID = eeprom->Register(maxbufferlen, defaultPWD);
-  passwordWlan =   eeprom->Load(passwordWlanID);
+  if (eeprom != NULL)
+  {
+    passwordWlanID = eeprom->Register(maxbufferlen, defaultPWD);
+    passwordWlan =   eeprom->Load(passwordWlanID);
+    ssidWlanID = eeprom->Register(maxbufferlen, defaultssid );
+    ssidWlan = eeprom->Load(ssidWlanID);
+  }
+  else
+  {
+    ssidWlan=  defaultssid;
+    passwordWlan = defaultPWD;
+  }
   Serial.println(passwordWlan);
-
-  ssidWlanID = eeprom->Register(maxbufferlen, defaultssid );
-  ssidWlan = eeprom->Load(ssidWlanID);
   Serial.println(ssidWlan);
-
+return;
   webserver->on("/", std::bind(&WlanConnector::handle_OnAccessWeb, this));
   webserver->on("/config", std::bind(&WlanConnector::handle_OnConfigWeb, this));
   webserver->on("/reload", std::bind(&WlanConnector::handle_OnAutoRefreshPage, this));
@@ -271,13 +280,13 @@ void WlanConnector::handle_OnAccessSave(void)
       Serial.print(webserver->arg(0));
       Serial.print(" - ");
       Serial.println(webserver->arg(1));
-
-      eeprom->Save(ssidWlanID, webserver->arg(0));
-      eeprom->Save(passwordWlanID, webserver->arg(1));
-
-      passwordWlan =   eeprom->Load(passwordWlanID);
-      ssidWlan = eeprom->Load(ssidWlanID);
-
+      if (eeprom != NULL)
+      {
+        eeprom->Save(ssidWlanID, webserver->arg(0));
+        eeprom->Save(passwordWlanID, webserver->arg(1));
+        passwordWlan =   eeprom->Load(passwordWlanID);
+        ssidWlan = eeprom->Load(ssidWlanID);
+      }
      #ifdef DEBUG_WLAN
       Serial.println(ssidWlan);
       Serial.println(passwordWlan);

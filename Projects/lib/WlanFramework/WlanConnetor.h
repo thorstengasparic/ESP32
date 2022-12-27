@@ -2,8 +2,16 @@
 #define WLANCONNECTOR_h
 #include <Arduino.h>
 
-#include <WiFi.h>
-#include <WebServer.h>
+
+#if defined(ESP8266)
+  #include <ESP8266WiFi.h>
+  #include <WiFiClient.h>
+  #include <ESP8266WebServer.h>
+#elif defined(ESP32)
+  #include <WiFi.h>
+  #include <WebServer.h>
+#endif
+
 #include <WlanConnetor.h>
 
 #include <EEPROMProvider.h>
@@ -26,7 +34,11 @@ class WlanConnector
 
     #define defaultPWD "SchatziEngele42"
     #define defaultssid  "HP-675276"
-    const char* ssidAccessPoint = "ESP-32";
+    #if defined(ESP8266)
+      const char* ssidAccessPoint = "ESP-8266";
+    #elif defined(ESP32)
+      const char* ssidAccessPoint = "ESP-32";
+    #endif
     const char* passwordAccessPoint = NULL;
     const char* local_ipStr = "192.168.4.1";
     const char* gatewayStr = "192.168.4.1";
@@ -42,8 +54,7 @@ class WlanConnector
     void SetCallback(TContentCallback callback);
     void Process();
     bool BlinkAlive = true;
-
-void enableWDT(uint32_t seconds);
+    void enableWDT(uint32_t seconds);
     void resetWDT();
 
   private:
@@ -71,7 +82,13 @@ void enableWDT(uint32_t seconds);
     
     String getContent(void);
 
+    #if defined(ESP8266)
+    ESP8266WebServer* webserver;    
+    #elif defined(ESP32)
     WebServer* webserver;    
+    #endif
+
+
 
     EEPROMProvider* eeprom;
     uint8_t ssidWlanID;

@@ -1,11 +1,18 @@
 #include <Arduino.h>
-#include <WiFi.h>
-#include <WebServer.h>
-#include <WlanConnetor.h>
+
+#if defined(ESP8266)
+  #include <ESP8266WiFi.h>
+  #include <WiFiClient.h>
+  #include <ESP8266WebServer.h>
+ #elif defined(ESP32)
+   #include <WiFi.h>
+   #include <WebServer.h>
+   #include <esp_task_wdt.h>
+ #endif
 
 #include <WlanConnetor.h>
 #include <wifiCredHtml.h>
-#include <esp_task_wdt.h>
+
 
 
 WlanConnector::WlanConnector()
@@ -14,31 +21,40 @@ WlanConnector::WlanConnector()
 
 WlanConnector::WlanConnector(uint8_t accesPointPinIn, uint8_t statusLed, EEPROMProvider* eepromIn)
 {
+#if defined(ESP8266)
+#pragma message "ESP8266"
+  webserver = new ESP8266WebServer(stdPort);
+#elif defined(ESP32)
+#pragma message "ESP32 "
   webserver = new WebServer(stdPort);
+#endif
   contentCallback = NULL;
 
   for (int i = 0; i< maxOptions; i++) options[i] =0;
-
   statusLED = statusLed;
   pinMode(statusLED, OUTPUT);
 
   accesPointPin = accesPointPinIn;
   pinMode(accesPointPin, INPUT);
-
   IsInAccessPointMode = false;
   IsInWebserverMode = false;
   eeprom = eepromIn;
   lastMillis = 0;
-
   #define maxbufferlen 32
-  passwordWlanID = eeprom->Register(maxbufferlen, defaultPWD);
-  passwordWlan =   eeprom->Load(passwordWlanID);
+  if (eepromIn != NULL)
+  {
+    Serial.println("6");
+    passwordWlanID = eeprom->Register(maxbufferlen, defaultPWD);
+    passwordWlan =   eeprom->Load(passwordWlanID);
+    ssidWlanID = eeprom->Register(maxbufferlen, defaultssid );
+    ssidWlan = eeprom->Load(ssidWlanID);
+  }
+  else{
+    ssidWlan = defaultssid;
+    passwordWlan = defaultPWD;
+  }
   Serial.println(passwordWlan);
-
-  ssidWlanID = eeprom->Register(maxbufferlen, defaultssid );
-  ssidWlan = eeprom->Load(ssidWlanID);
   Serial.println(ssidWlan);
-
   webserver->on("/", std::bind(&WlanConnector::handle_OnAccessWeb, this));
   webserver->on("/config", std::bind(&WlanConnector::handle_OnConfigWeb, this));
   webserver->on("/reload", std::bind(&WlanConnector::handle_OnAutoRefreshPage, this));
@@ -61,16 +77,28 @@ void  WlanConnector::ResetWiFi()
    WiFi.disconnect(true);
    webserver->close();
 }
+
+
 void WlanConnector::enableWDT(uint32_t seconds)
 {
+  #if defined(ESP32)
     esp_task_wdt_init(seconds, true); //enable panic so ESP32 restarts
     esp_task_wdt_add(NULL); //add current thread to WDT watch
+  #else
+     #pragma message "enableWDT is not implemented for ESP8266"
+  #endif
 
 }
 void WlanConnector::resetWDT()
 {
-  esp_task_wdt_reset();
+  #if defined(ESP32)
+    esp_task_wdt_reset();
+  #else
+    #pragma message "resetWDT() is not implemented for ESP8266"
+  #endif
 }
+
+
 void  WlanConnector::ProcessAccessPoint()
 {
     this->resetWDT();
@@ -268,16 +296,18 @@ void WlanConnector::handle_OnAccessSave(void)
   int i = webserver->args();
   if (i ==2)
   {
-      
-      Serial.print(webserver->arg(0));
-      Serial.print(" - ");
-      Serial.println(webserver->arg(1));
+      if (eeprom != NULL)
+      {
+        Serial.print(webserver->arg(0));
+        Serial.print(" - ");
+        Serial.println(webserver->arg(1));
 
-      eeprom->Save(ssidWlanID, webserver->arg(0));
-      eeprom->Save(passwordWlanID, webserver->arg(1));
+        eeprom->Save(ssidWlanID, webserver->arg(0));
+        eeprom->Save(passwordWlanID, webserver->arg(1));
 
-      passwordWlan =   eeprom->Load(passwordWlanID);
-      ssidWlan = eeprom->Load(ssidWlanID);
+        passwordWlan =   eeprom->Load(passwordWlanID);
+        ssidWlan = eeprom->Load(ssidWlanID);
+      }
 
      #ifdef DEBUG_WLAN
       Serial.println(ssidWlan);
