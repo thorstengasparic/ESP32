@@ -120,7 +120,7 @@ void getValues(void)
     volts0 = ads.computeVolts(adc0);
     volts1 = ads.computeVolts(adc1);
     
-    measurecurrent = (volts0-1.65)*26.7;
+    measurecurrent = (volts0-1.65)*21.8;
     measurevoltage = volts1*12.0;
     measurepower =measurevoltage*measurecurrent;
     Serial.print("V0="); Serial.print(volts0); Serial.print("\t V1="); Serial.print(volts1);
@@ -137,7 +137,6 @@ void getValues(void)
 "   \"solar\":{\n"
 "    \"V0A\":\""+String(volts0)+"\",\n"
 "    \"V1V\":\""+String(volts1)+"\",\n"
-"     \"current\":\""+String(measurecurrent)+"\",\n"
 "      \"current\":\""+String(measurecurrent)+"\",\n"
 "      \"voltage\":\""+String(measurevoltage)+"\",\n"
 "      \"power\":\""+String(measurepower)+"\",\n"
