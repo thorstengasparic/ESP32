@@ -106,7 +106,7 @@ void loop() {
     getValues();
 }
 
-double volts0, volts1;
+double volts0Cur, volts1Volt, volts2Ref;
 double measurecurrent, measurevoltage, measurepower;
 unsigned long measureMillis = 0;
 void getValues(void)
@@ -114,18 +114,24 @@ void getValues(void)
   unsigned long currentMillis = millis();
   if ((currentMillis- measureMillis) > 1000)
   {
-    int16_t adc0, adc1;
-    adc0 = ads.readADC_SingleEnded(0);
-    adc1 = ads.readADC_SingleEnded(1);
-    volts0 = ads.computeVolts(adc0);
-    volts1 = ads.computeVolts(adc1);
     
-    measurecurrent = (volts0-1.65)*21.8;
-    measurevoltage = volts1*12.0;
+    int16_t adc0 = ads.readADC_SingleEnded(0);
+    int16_t adc1 = ads.readADC_SingleEnded(1);
+    int16_t adc2 = ads.readADC_SingleEnded(2);
+    
+    volts0Cur = ads.computeVolts(adc0);
+    volts1Volt = ads.computeVolts(adc1);
+    volts2Ref = ads.computeVolts(adc2);
+    
+    double voltsDelta = volts0Cur -volts2Ref;
+    measurecurrent = voltsDelta*22.14;
+    measurevoltage = volts1Volt*12.0;
     measurepower =measurevoltage*measurecurrent;
-    Serial.print("V0="); Serial.print(volts0); Serial.print("\t V1="); Serial.print(volts1);
+
+    Serial.print("VCur0="); Serial.print(volts0Cur); Serial.print("\t VRef2="); Serial.print(volts2Ref); Serial.print("\t VVolt1="); Serial.print(volts1Volt);
     Serial.print("\tV="); Serial.print(measurevoltage); Serial.print("\t A="); Serial.print(measurecurrent);
     Serial.print("\t P="); Serial.println(measurepower);
+    
      measureMillis = millis();
    }
 }
@@ -135,8 +141,9 @@ void getValues(void)
  {
       String jsonHtmlPage = "{\n"
 "   \"solar\":{\n"
-"    \"V0A\":\""+String(volts0)+"\",\n"
-"    \"V1V\":\""+String(volts1)+"\",\n"
+"    \"V0A\":\""+String(volts0Cur)+"\",\n"
+"    \"V1V\":\""+String(volts1Volt)+"\",\n"
+"    \"V1V\":\""+String(volts2Ref)+"\",\n"
 "      \"current\":\""+String(measurecurrent)+"\",\n"
 "      \"voltage\":\""+String(measurevoltage)+"\",\n"
 "      \"power\":\""+String(measurepower)+"\",\n"
