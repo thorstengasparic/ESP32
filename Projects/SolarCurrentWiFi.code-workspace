@@ -23,12 +23,12 @@
 			"path": "WlanPowerMeasure"
 		},
 		{
-			"name": "BlueTooth",
-			"path": "BlueTooth"
+			"name": "MiniSerial",
+			"path": "MiniSerial"
 		},
 		{
-			"name": "blueiot",
-			"path": "blueiot"
+			"name": "EspSerial",
+			"path": "EspSerial"
 		}
 	],
 	"settings": {
