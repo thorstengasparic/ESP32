@@ -26,23 +26,21 @@ void setup()
 
 }
 
+String command = "";
 void loop() // run over and over
 {
    getValues();
-  while (mySerial.available())
+  if (mySerial.available())
   {
     char c = mySerial.read();
-    mySerial.write(c);
-    Serial.write(c);
-  }
-  
-  // if (Serial.available())
-  // {
-  //   String erg = "-";55
-  //   erg += Serial.read();
-  //   Serial.write(erg.c_str());
-  // } 
-    
+    //Serial.write(c);
+    command += c;
+    if (c == 13)
+    {
+      mySerial.print(command);
+      command = "";
+    }
+  } 
 }
 
 double volts0Cur, volts1Volt, volts2Ref;
