@@ -94,7 +94,7 @@ void setup() {
 
   wlanConnector->SetCallback(HttpContentFunction);
 
-  if (!ads.begin(ADS1X15_ADDRESS+2)) {
+  if (!ads.begin(ADS1X15_ADDRESS)) {
     Serial.println("Failed to initialize ADS.");
     while (1);
   }
@@ -108,7 +108,7 @@ void loop() {
     getValues();
 }
 
-double volts0Cur, volts1Volt, volts2Ref;
+double volts0, volts1, volts2, volts3;
 double measurecurrent, measurevoltage, measurepower;
 unsigned long measureMillis = 0;
 void getValues(void)
@@ -120,20 +120,41 @@ void getValues(void)
     int16_t adc0 = ads.readADC_SingleEnded(0);
     int16_t adc1 = ads.readADC_SingleEnded(1);
     int16_t adc2 = ads.readADC_SingleEnded(2);
+    int16_t adc3 = ads.readADC_SingleEnded(3);
     
-    volts0Cur = ads.computeVolts(adc0);
-    volts1Volt = ads.computeVolts(adc1);
-    volts2Ref = ads.computeVolts(adc2);
+    volts0 = ads.computeVolts(adc0);
+    volts1 = ads.computeVolts(adc1);
+    volts2 = ads.computeVolts(adc2);
+    volts3 = ads.computeVolts(adc3);
+    double mesaureVoltage = volts0;
+    double refVoltage = volts1;
+    double delta = mesaureVoltage-refVoltage;
     
+    double iCur0 = (delta)*5.6 - 0.0;
+    
+    
+
+    Serial.print("V0="); Serial.print(volts0);Serial.print("\t");
+    Serial.print("V1="); Serial.print(volts1);Serial.print("\t");
+    Serial.print("V2="); Serial.print(volts2);Serial.print("\t");
+    Serial.print("V3="); Serial.print(volts3);Serial.print("\t");
+    Serial.print("mesaureVoltage="); Serial.print(mesaureVoltage,2);Serial.print("\t");
+    Serial.print("refVoltage="); Serial.print(refVoltage,2);Serial.print("\t");
+    Serial.print("delta="); Serial.print(delta,2);Serial.print("\t");
+    Serial.print("iCur0="); Serial.print(iCur0,2);Serial.print("\t");
+
+
+    /*
     double voltsDelta = volts0Cur -volts2Ref;
-    measurecurrent = voltsDelta*22.wm14;
+    measurecurrent = voltsDelta*22.14;
     measurevoltage = volts1Volt*12.0;
     measurepower =measurevoltage*measurecurrent;
 
     Serial.print("VCur0="); Serial.print(volts0Cur); Serial.print("\t VRef2="); Serial.print(volts2Ref); Serial.print("\t VVolt1="); Serial.print(volts1Volt);
     Serial.print("\tV="); Serial.print(measurevoltage); Serial.print("\t A="); Serial.print(measurecurrent);
     Serial.print("\t P="); Serial.println(measurepower);
-    
+    */
+   Serial.println("");
      measureMillis = millis();
    }
 }
@@ -143,9 +164,9 @@ void getValues(void)
  {
       String jsonHtmlPage = "{\n"
 "   \"solar\":{\n"
-"    \"V0A\":\""+String(volts0Cur)+"\",\n"
-"    \"V1V\":\""+String(volts1Volt)+"\",\n"
-"    \"V1V\":\""+String(volts2Ref)+"\",\n"
+"    \"V0A\":\""+String(volts0)+"\",\n"
+"    \"V1V\":\""+String(volts1)+"\",\n"
+"    \"V1V\":\""+String(volts2)+"\",\n"
 "      \"current\":\""+String(measurecurrent)+"\",\n"
 "      \"voltage\":\""+String(measurevoltage)+"\",\n"
 "      \"power\":\""+String(measurepower)+"\",\n"
