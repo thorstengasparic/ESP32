@@ -67,7 +67,7 @@
 #define VERSION "1.0"
 
 #define STATUS_LED LED_BUILTIN
-#define wifiModePin D6
+
 String HttpContentFunction();
 EEPROMProvider* eeprom = NULL;
 WlanConnector *wlanConnector = NULL;
@@ -77,8 +77,10 @@ Adafruit_ADS1115 ads;     /* Use this for the 16-bit version */
 
 #if defined(ESP8266)
 #pragma message "ESP8266"
+#define wifiModePin D6
 #elif defined(ESP32)
 #pragma message "ESP32"
+#define wifiModePin 5
 #else
 #error "This ain't a ESP8266 or ESP32"
 #endif
@@ -92,7 +94,7 @@ void setup() {
 
   wlanConnector->SetCallback(HttpContentFunction);
 
-  if (!ads.begin()) {
+  if (!ads.begin(ADS1X15_ADDRESS+2)) {
     Serial.println("Failed to initialize ADS.");
     while (1);
   }
@@ -124,7 +126,7 @@ void getValues(void)
     volts2Ref = ads.computeVolts(adc2);
     
     double voltsDelta = volts0Cur -volts2Ref;
-    measurecurrent = voltsDelta*22.14;
+    measurecurrent = voltsDelta*22.wm14;
     measurevoltage = volts1Volt*12.0;
     measurepower =measurevoltage*measurecurrent;
 

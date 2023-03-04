@@ -1,5 +1,5 @@
+//pio device monitor -p COM4 -b 115200
 #include <Arduino.h>
-
 
 #define RXD2 16
 #define TXD2 17
@@ -10,24 +10,26 @@ void setup()
   while (!Serial) {
     ; // wait for serial port to connect. Needed for Native USB only
   }
-  Serial2.begin(600, SERIAL_8N1, RXD2, TXD2);
+  Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
 }
-
+String command = "";
 void loop() 
 {
-  while (Serial.available())
+  if (Serial.available())
   {
     char c = Serial.read();
     Serial.write(c);
-    Serial2.write(c);
-    return;
+    command += c;
+    if (c == 13)
+    {
+      Serial2.println(command);
+      command = "";
+    }
   } 
 
-  while(Serial2.available())
+  if (Serial2.available())
   {
-    Serial.write("'");
     Serial.write(Serial2.read());
-    Serial.println("'");
   } 
     
 }

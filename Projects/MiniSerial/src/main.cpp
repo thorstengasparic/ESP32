@@ -1,3 +1,4 @@
+//pio device monitor -p COM4 -b 115200
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 
