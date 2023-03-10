@@ -108,7 +108,7 @@ void loop() {
     getValues();
 }
 
-double volts0, volts1, volts2, volts3;
+double voltCurrent, refVoltage, voltageExtern, voltageIntern;
 double measurecurrent, measurevoltage, measurepower;
 unsigned long measureMillis = 0;
 void getValues(void)
@@ -122,24 +122,22 @@ void getValues(void)
     int16_t adc2 = ads.readADC_SingleEnded(2);
     int16_t adc3 = ads.readADC_SingleEnded(3);
     
-    volts0 = ads.computeVolts(adc0);
-    volts1 = ads.computeVolts(adc1);
-    volts2 = ads.computeVolts(adc2);
-    volts3 = ads.computeVolts(adc3);
-    double mesaureVoltage = volts0;
-    double refVoltage = volts1;
-    double delta = mesaureVoltage-refVoltage;
+    voltCurrent = ads.computeVolts(adc0);
+    refVoltage = ads.computeVolts(adc1);
+    voltageExtern = ads.computeVolts(adc2);
+    voltageIntern = ads.computeVolts(adc3);
+    refVoltage = voltageIntern/2;
+    double delta = voltCurrent-refVoltage +0.01;
     
-    double iCur0 = (delta)*5.6 - 0.0;
+    double iCur0 = (delta)*5.5 ;
+    
     
     
 
-    Serial.print("V0="); Serial.print(volts0);Serial.print("\t");
-    Serial.print("V1="); Serial.print(volts1);Serial.print("\t");
-    Serial.print("V2="); Serial.print(volts2);Serial.print("\t");
-    Serial.print("V3="); Serial.print(volts3);Serial.print("\t");
-    Serial.print("mesaureVoltage="); Serial.print(mesaureVoltage,2);Serial.print("\t");
-    Serial.print("refVoltage="); Serial.print(refVoltage,2);Serial.print("\t");
+    Serial.print("VCur="); Serial.print(voltCurrent);Serial.print("\t");
+    Serial.print("VRef="); Serial.print(refVoltage);Serial.print("\t");
+    Serial.print("VExt="); Serial.print(voltageExtern);Serial.print("\t");
+    Serial.print("VInt="); Serial.print(voltageIntern);Serial.print("\t");
     Serial.print("delta="); Serial.print(delta,2);Serial.print("\t");
     Serial.print("iCur0="); Serial.print(iCur0,2);Serial.print("\t");
 
@@ -164,9 +162,9 @@ void getValues(void)
  {
       String jsonHtmlPage = "{\n"
 "   \"solar\":{\n"
-"    \"V0A\":\""+String(volts0)+"\",\n"
-"    \"V1V\":\""+String(volts1)+"\",\n"
-"    \"V1V\":\""+String(volts2)+"\",\n"
+//"    \"V0A\":\""+String(volts0)+"\",\n"
+//"    \"V1V\":\""+String(volts1)+"\",\n"
+//"    \"V1V\":\""+String(volts2)+"\",\n"
 "      \"current\":\""+String(measurecurrent)+"\",\n"
 "      \"voltage\":\""+String(measurevoltage)+"\",\n"
 "      \"power\":\""+String(measurepower)+"\",\n"
