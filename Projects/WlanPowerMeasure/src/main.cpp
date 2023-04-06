@@ -9,17 +9,33 @@
 #include <INA226.h>
 
 #define VERSION "1.0"
-
 #define SUS_LED LED_BUILTIN
 
-INA226 ina(0x40, &Wire);
+struct Measurement
+{
+  bool isInit;
+  bool deviceAvailable;
+  double voltageExtern;
+  double voltageIntern;
+  double currentExtern;
+  double voltageOffset;
+  double dropVoltage;
+  byte adress;
+};
+
+Measurement* adcChannel01;
+Measurement* adcChannel02;
+Measurement* inaChannel01;
 
 void InitINA(void);
 void INA226getValues(void );
 String HttpContentFunction();
-//EEPROMProvider* eeprom = NULL;
-//WlanConnector *wlanConnector = NULL;
-Adafruit_ADS1115 ads;     /* Use this for the 16-bit version */
+INA226 ina(0x40, &Wire);
+
+void InitADS1X15(Adafruit_ADS1115 *adcChanel, Measurement *measureResult);
+void ADS1X15getValues(Adafruit_ADS1115 *adcChanel, Measurement *measureResult);
+Adafruit_ADS1115* adsVCC;
+Adafruit_ADS1115* adsGND;     
 
 #if defined(ESP8266)
 #pragma message "ESP8266"
@@ -30,26 +46,60 @@ Adafruit_ADS1115 ads;     /* Use this for the 16-bit version */
 #else
 #error "This ain't a ESP8266 or ESP32"
 #endif
-void InitADS1X15(void );
-void ADS1X15getValues(void );
+
+void printvalues(String name, Measurement *measureResult);
+void InitGlobals(void)
+{
+  adsVCC = new Adafruit_ADS1115();
+  adsGND = new Adafruit_ADS1115();     
+  adcChannel01 = new Measurement();
+  adcChannel02 = new Measurement();
+  inaChannel01 = new Measurement();
+
+  adcChannel01->adress = ADS1X15_ADDRESS;
+  adcChannel02->adress = ADS1X15_ADDRESSVCC;
+
+  adcChannel01->isInit = false;
+  adcChannel02->isInit  = false;
+  inaChannel01->isInit  = false;
+
+  adcChannel01->deviceAvailable = false;
+  adcChannel02->deviceAvailable = false;
+  inaChannel01->deviceAvailable = false;
+}
+
 void setup() {
   Serial.begin(115200); // Starts the serial communication
   Serial.println("Init...");
+
+  InitGlobals();
 
   //eeprom = new EEPROMProvider(VERSION);
  // wlanConnector = new WlanConnector(wifiModePin, STATUS_LED, eeprom);
 
   //wlanConnector->SetCallback(HttpContentFunction);
  //InitINA();
- InitADS1X15();
-    
+  InitADS1X15(adsGND, adcChannel01);
+  InitADS1X15(adsVCC, adcChannel02);
   //eeprom->ArmVersionNumber();  
   //wlanConnector->enableWDT(30);
 }
 
+unsigned long measureMillisPrintline = 0;
 void loop() {
+  unsigned long currentMillis = millis();
    //wlanConnector->Process();    
-    ADS1X15getValues();
+  ADS1X15getValues(adsGND, adcChannel01);
+  //ADS1X15getValues(adsVCC, adcChannel02);
+
+  if ((currentMillis- measureMillisPrintline) > 500)
+  {
+    printvalues("ads01",  adcChannel01);
+    printvalues("ads02",  adcChannel02);
+    Serial.println("");
+    measureMillisPrintline = currentMillis;
+  }
+  delay(10);
    //INA226getValues();
 }
 
@@ -89,90 +139,97 @@ void InitINA()
   
 }
 
-void InitADS1X15()
+void InitADS1X15(Adafruit_ADS1115 *adcChanel, Measurement *measureResult)
 {
-if (!ads.begin(ADS1X15_ADDRESSVCC)) {
-    Serial.println("Failed to initialize ADS.");
-    while (1);
+  if (measureResult->deviceAvailable) return;
+  if (!adcChanel->begin(measureResult->adress)) 
+  {
+    Serial.print("Failed to initialize ADS on ");
+    Serial.println(measureResult->adress);
   }
+  measureResult->deviceAvailable = true;
 }
-double voltCurrent, refVoltage, voltageExtern, voltageIntern;
-double measurecurrent, measurevoltage, measurepower;
-unsigned long measureMillis = 0;
-double correction = 0.0;
-int16_t adc0=0;
-int16_t adc1=0;
-int16_t adc2=0;
-int16_t adc3=0;
-double iCur0;
-void ADS1X15getValues(void)
+void printvalues(String name, Measurement *measureResult)
 {
-  int16_t adc0_new = ads.readADC_SingleEnded(0);
-  int16_t adc1_new = ads.readADC_SingleEnded(1);
-  int16_t adc2_new = ads.readADC_SingleEnded(2);
-  int16_t adc3_new = ads.readADC_SingleEnded(3);
-  if(adc2 ==0)
+  Serial.print(name);
+  Serial.print("\t V=");
+  Serial.print(measureResult->voltageExtern, 3);
+  Serial.print("\t A=");
+  Serial.print(measureResult->currentExtern, 3);
+  Serial.print("\t Vd=");
+  Serial.print(measureResult->dropVoltage, 3);
+  Serial.print("\t Vi=");
+  Serial.print(measureResult->voltageIntern, 3);
+  Serial.print("\t Vo=");
+  Serial.print(measureResult->voltageOffset, 3);
+  Serial.println();
+}
+unsigned long measureMillis = 0;
+void ADS1X15getValues(Adafruit_ADS1115 *adcChanel, Measurement *measureResult)
+{
+  double delta = 0.1;
+  if(!measureResult->deviceAvailable)
   {
-    adc0 = adc0_new;
-    adc1 = adc1_new;
-    adc2 = adc2_new;
-    adc3 = adc3_new;
-    voltageExtern = ads.computeVolts(adc0);
-    voltageIntern = ads.computeVolts(adc1);
-     voltCurrent = ads.computeVolts(adc2);
+    InitADS1X15(adcChanel, measureResult);    
   }
-  else
+try
+{
+  int16_t adc0_new = adcChanel->readADC_SingleEnded(0);
+  int16_t adc1_new = adcChanel->readADC_SingleEnded(1);
+  int16_t adc2_new = adcChanel->readADC_SingleEnded(2);
+
+  if (!measureResult->isInit)
   {
-    adc0 = adc0_new;
-    adc1 = adc1_new;
-    adc2 = adc2_new;
-    adc3 = adc3_new;
-  }
-  double voltageExtern_new = ads.computeVolts(adc0);
-  double voltageIntern_new = ads.computeVolts(adc1);
-  double voltCurrent_new = ads.computeVolts(adc2);
-  double delta = 0.01;
-  voltageExtern = (voltageExtern*(1.0-delta)) + (voltageExtern_new * delta);
-  voltageIntern = (voltageIntern*(1.0-delta)) + (voltageIntern_new * delta);
-  voltCurrent = (voltCurrent*(1.0-delta)) + (voltCurrent_new* delta);
+    measureResult->voltageExtern = adcChanel->computeVolts(adc0_new)*10.0;
+    measureResult->voltageIntern = adcChanel->computeVolts(adc1_new);
+    measureResult->dropVoltage   = adcChanel->computeVolts(adc2_new);  
+  }  
+  double voltageExtern_new = adcChanel->computeVolts(adc0_new)*10.0;
+  double voltageIntern_new = adcChanel->computeVolts(adc1_new);
+  double dropVoltage_new   = adcChanel->computeVolts(adc2_new);
+}
+catch(const std::exception& e)
+{
+  measureResult->deviceAvailable = false;
+  Serial.print("exeption "); 
+  Serial.println(e.what());
+  return;
+}
+
+  int16_t adc0_new = adcChanel->readADC_SingleEnded(0);
+  int16_t adc1_new = adcChanel->readADC_SingleEnded(1);
+  int16_t adc2_new = adcChanel->readADC_SingleEnded(2);
+
+  if (!measureResult->isInit)
+  {
+    measureResult->voltageExtern = adcChanel->computeVolts(adc0_new)*10.0;
+    measureResult->voltageIntern = adcChanel->computeVolts(adc1_new);
+    measureResult->dropVoltage   = adcChanel->computeVolts(adc2_new);  
+  }  
+  double voltageExtern_new = adcChanel->computeVolts(adc0_new)*10.0;
+  double voltageIntern_new = adcChanel->computeVolts(adc1_new);
+  double dropVoltage_new   = adcChanel->computeVolts(adc2_new);
   
-  refVoltage = voltageIntern/2;
-    double deltaV = voltCurrent-refVoltage;
-    if (correction==0.0)
-    {
-      correction = deltaV;
-    }
-    
-    double iCur0 = (deltaV-correction)*15.0 ;
-    
-    
-  unsigned long currentMillis = millis();
-
-    
-    
-    
-byte len = 5;
-  Serial.print("Corr="); Serial.print(correction,len);Serial.print("\t");
-    Serial.print("VCur="); Serial.print(voltCurrent,len);Serial.print("\t");
-    Serial.print("VRef="); Serial.print(refVoltage,len);Serial.print("\t");
-    Serial.print("VExt="); Serial.print(voltageExtern*10.0,len);Serial.print("\t");
-    Serial.print("VInt="); Serial.print(voltageIntern,len);Serial.print("\t");
-    Serial.print("delta="); Serial.print(deltaV,len);Serial.print("\t");
-    Serial.print("iCur0="); Serial.print(iCur0,len);Serial.print("\t");
-
-
-    /*
-    double voltsDelta = volts0Cur -volts2Ref;
-    measurecurrent = voltsDelta*22.14;
-    measurevoltage = volts1Volt*12.0;
-    measurepower =measurevoltage*measurecurrent;
-
-    Serial.print("VCur0="); Serial.print(volts0Cur); Serial.print("\t VRef2="); Serial.print(volts2Ref); Serial.print("\t VVolt1="); Serial.print(volts1Volt);
-    Serial.print("\tV="); Serial.print(measurevoltage); Serial.print("\t A="); Serial.print(measurecurrent);
-    Serial.print("\t P="); Serial.println(measurepower);
-    */
-   Serial.println("");
-   measureMillis = millis();
+  
+  measureResult->voltageExtern = (measureResult->voltageExtern*(1.0-delta)) + (voltageExtern_new * delta);
+  measureResult->voltageIntern = (measureResult->voltageIntern*(1.0-delta)) + (voltageIntern_new * delta);
+  measureResult->dropVoltage = (measureResult->dropVoltage*(1.0-delta)) + (dropVoltage_new* delta);
+  
+  double refVoltage = measureResult->voltageIntern/2;
+  double deltaVoltage = measureResult->dropVoltage-refVoltage;
+  
+  if (!measureResult->isInit)
+  {
+    measureResult->voltageOffset = deltaVoltage;
+    //measureResult->voltageOffset = 0.011;
+  }
+  measureResult->currentExtern = (deltaVoltage-measureResult->voltageOffset)*15.0 ;
+  
+  if (!measureResult->isInit)
+  {
+    measureResult->isInit = true;
+  }
+  measureMillis = millis();
 }
 
 
@@ -183,10 +240,10 @@ byte len = 5;
 //"    \"V0A\":\""+String(volts0)+"\",\n"
 //"    \"V1V\":\""+String(volts1)+"\",\n"
 //"    \"V1V\":\""+String(volts2)+"\",\n"
-"      \"current\":\""+String(measurecurrent)+"\",\n"
-"      \"voltage\":\""+String(measurevoltage)+"\",\n"
-"      \"power\":\""+String(measurepower)+"\",\n"
-"   }\n"
+//"      \"current\":\""+String(measurecurrent)+"\",\n"
+//"      \"voltage\":\""+String(measurevoltage)+"\",\n"
+//"      \"power\":\""+String(measurepower)+"\",\n"
+//"   }\n"
 "}";
   return jsonHtmlPage; 
  } 
