@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include <Adafruit_ADS1X15.h>
+#include <SPI.h>
+#include "Adafruit_ADS1X15.h"
  //#include <EEPROM.h>
  //#include <EEPROMProvider.h>
  //#include <WlanConnetor.h>
@@ -10,16 +11,19 @@
 
 #define VERSION "1.0"
 #define SUS_LED LED_BUILTIN
-
+#define diffvoltageDiode 0.72
 struct Measurement
 {
   bool isInit;
   bool deviceAvailable;
   double voltageExtern;
+  double voltageExternEff;
   double voltageIntern;
   double currentExtern;
   double voltageOffset;
   double dropVoltage;
+  double voltageDiode;
+  double voltageFactor;
   byte adress;
 };
 
@@ -28,11 +32,11 @@ Measurement* adcChannel02;
 Measurement* inaChannel01;
 
 void InitINA(void);
-void INA226getValues(void );
+void INA226getValues(Measurement *values);
 String HttpContentFunction();
 INA226 ina(0x40, &Wire);
 
-void InitADS1X15(Adafruit_ADS1115 *adcChanel, Measurement *measureResult);
+bool InitADS1X15(Adafruit_ADS1115 *adcChanel, Measurement *measureResult);
 void ADS1X15getValues(Adafruit_ADS1115 *adcChanel, Measurement *measureResult);
 Adafruit_ADS1115* adsVCC;
 Adafruit_ADS1115* adsGND;     
@@ -56,9 +60,6 @@ void InitGlobals(void)
   adcChannel02 = new Measurement();
   inaChannel01 = new Measurement();
 
-  adcChannel01->adress = ADS1X15_ADDRESS;
-  adcChannel02->adress = ADS1X15_ADDRESSVCC;
-
   adcChannel01->isInit = false;
   adcChannel02->isInit  = false;
   inaChannel01->isInit  = false;
@@ -66,6 +67,22 @@ void InitGlobals(void)
   adcChannel01->deviceAvailable = false;
   adcChannel02->deviceAvailable = false;
   inaChannel01->deviceAvailable = false;
+
+  adcChannel01->adress = ADS1X15_ADDRESS;
+  adcChannel02->adress = ADS1X15_ADDRESS+1;
+
+  adcChannel01->voltageDiode = diffvoltageDiode;
+  adcChannel02->voltageDiode = diffvoltageDiode;
+  inaChannel01->voltageDiode  = diffvoltageDiode;
+
+  adcChannel01->voltageOffset = -0.018;
+  adcChannel02->voltageOffset = -0.012;
+  inaChannel01->voltageOffset = 0.0;
+
+  adcChannel01->voltageFactor = 5.5;
+  adcChannel02->voltageFactor = -14.7;
+  inaChannel01->voltageFactor = 0.213;
+  
 }
 
 void setup() {
@@ -73,12 +90,14 @@ void setup() {
   Serial.println("Init...");
 
   InitGlobals();
+  
+  Wire.begin();
 
   //eeprom = new EEPROMProvider(VERSION);
  // wlanConnector = new WlanConnector(wifiModePin, STATUS_LED, eeprom);
 
   //wlanConnector->SetCallback(HttpContentFunction);
- //InitINA();
+  InitINA();
   InitADS1X15(adsGND, adcChannel01);
   InitADS1X15(adsVCC, adcChannel02);
   //eeprom->ArmVersionNumber();  
@@ -90,70 +109,63 @@ void loop() {
   unsigned long currentMillis = millis();
    //wlanConnector->Process();    
   ADS1X15getValues(adsGND, adcChannel01);
-  //ADS1X15getValues(adsVCC, adcChannel02);
+  ADS1X15getValues(adsVCC, adcChannel02);
+  INA226getValues(inaChannel01);
 
   if ((currentMillis- measureMillisPrintline) > 500)
   {
     printvalues("ads01",  adcChannel01);
     printvalues("ads02",  adcChannel02);
-    Serial.println("");
+    printvalues("ina01",  inaChannel01);
     measureMillisPrintline = currentMillis;
   }
   delay(10);
-   //INA226getValues();
+   
 }
 
 unsigned long measureMillisINA226 = 0;
-void INA226getValues(void)
+void INA226getValues(Measurement *inaChannel)
 {
   unsigned long currentMillis = millis();
   if ((currentMillis- measureMillisINA226) > 1000)
   {
-    Serial.println("\nBUS\tSHUNT\tCURRENT\tPOWER");
-      Serial.print(ina.getBusVoltage(), 3);
-    Serial.print("\t");
-    Serial.print(ina.getShuntVoltage_mV(), 3);
-    Serial.print("\t");
-    Serial.print(ina.getCurrent_mA(), 3);
-    Serial.print("\t");
-    Serial.print(ina.getPower_mW(), 3);
-    Serial.print("\t");
-    Serial.print(ina.getShuntVoltage_mV()/0.00466, 3);
-    Serial.println();
-
-    delay(1000);
-      measureMillisINA226 = currentMillis;
+    inaChannel->voltageExtern = ina.getBusVoltage();
+    inaChannel->voltageExternEff = inaChannel->voltageExtern + inaChannel->voltageDiode;
+    inaChannel->dropVoltage = ina.getShuntVoltage_mV();
+    inaChannel->currentExtern = inaChannel->dropVoltage * inaChannel->voltageFactor;
+    
+    measureMillisINA226 = currentMillis;
   }
 }
 
 void InitINA()
 {
-    Serial.println(__FILE__);
-
-  Wire.begin();
+  Serial.println(__FILE__);
   if (!ina.begin() )
   {
     Serial.println("could not connect. Fix and Reboot");
   }
   Serial.println(ina.setMaxCurrentShunt(20.0, 0.00466));
-  
 }
 
-void InitADS1X15(Adafruit_ADS1115 *adcChanel, Measurement *measureResult)
+bool InitADS1X15(Adafruit_ADS1115 *adcChanel, Measurement *measureResult)
 {
-  if (measureResult->deviceAvailable) return;
-  if (!adcChanel->begin(measureResult->adress)) 
+  if (measureResult->deviceAvailable) return true;
+  
+  measureResult->deviceAvailable = adcChanel->begin(measureResult->adress);
+  if (!measureResult->deviceAvailable) 
   {
-    Serial.print("Failed to initialize ADS on ");
-    Serial.println(measureResult->adress);
+    Serial.print(".");
+    return false;
   }
-  measureResult->deviceAvailable = true;
+  return true;
 }
 void printvalues(String name, Measurement *measureResult)
 {
+  Serial.println("");
   Serial.print(name);
   Serial.print("\t V=");
-  Serial.print(measureResult->voltageExtern, 3);
+  Serial.print(measureResult->voltageExternEff , 3);
   Serial.print("\t A=");
   Serial.print(measureResult->currentExtern, 3);
   Serial.print("\t Vd=");
@@ -162,18 +174,41 @@ void printvalues(String name, Measurement *measureResult)
   Serial.print(measureResult->voltageIntern, 3);
   Serial.print("\t Vo=");
   Serial.print(measureResult->voltageOffset, 3);
-  Serial.println();
 }
 unsigned long measureMillis = 0;
 void ADS1X15getValues(Adafruit_ADS1115 *adcChanel, Measurement *measureResult)
 {
   double delta = 0.1;
-  if(!measureResult->deviceAvailable)
+  if(!InitADS1X15(adcChanel, measureResult))
   {
-    InitADS1X15(adcChanel, measureResult);    
+    //Serial.println("!measureResult->deviceAvailable in get"); 
+    return;
   }
-try
-{
+  try
+  {
+    int16_t adc0_new = adcChanel->readADC_SingleEnded(0);
+    int16_t adc1_new = adcChanel->readADC_SingleEnded(1);
+    int16_t adc2_new = adcChanel->readADC_SingleEnded(2);
+    
+    if (!measureResult->isInit)
+    {
+      measureResult->voltageExtern = adcChanel->computeVolts(adc0_new)*10.0;
+      measureResult->voltageIntern = adcChanel->computeVolts(adc1_new);
+      measureResult->dropVoltage   = adcChanel->computeVolts(adc2_new);  
+    }  
+    double voltageExtern_new = adcChanel->computeVolts(adc0_new)*10.0;
+    if (voltageExtern_new <= 0.0) 
+      voltageExtern_new = diffvoltageDiode * (-1.0);
+    double voltageIntern_new = adcChanel->computeVolts(adc1_new);
+    double dropVoltage_new   = adcChanel->computeVolts(adc2_new);
+  }
+  catch(const std::exception& e)
+  {
+    measureResult->deviceAvailable = false;
+    Serial.print("exception "); 
+    return;
+  }
+
   int16_t adc0_new = adcChanel->readADC_SingleEnded(0);
   int16_t adc1_new = adcChanel->readADC_SingleEnded(1);
   int16_t adc2_new = adcChanel->readADC_SingleEnded(2);
@@ -181,32 +216,13 @@ try
   if (!measureResult->isInit)
   {
     measureResult->voltageExtern = adcChanel->computeVolts(adc0_new)*10.0;
+    if (measureResult->voltageExtern <= 0.0) 
+      measureResult->voltageExtern = diffvoltageDiode * (-1.0);
     measureResult->voltageIntern = adcChanel->computeVolts(adc1_new);
     measureResult->dropVoltage   = adcChanel->computeVolts(adc2_new);  
   }  
   double voltageExtern_new = adcChanel->computeVolts(adc0_new)*10.0;
-  double voltageIntern_new = adcChanel->computeVolts(adc1_new);
-  double dropVoltage_new   = adcChanel->computeVolts(adc2_new);
-}
-catch(const std::exception& e)
-{
-  measureResult->deviceAvailable = false;
-  Serial.print("exeption "); 
-  Serial.println(e.what());
-  return;
-}
-
-  int16_t adc0_new = adcChanel->readADC_SingleEnded(0);
-  int16_t adc1_new = adcChanel->readADC_SingleEnded(1);
-  int16_t adc2_new = adcChanel->readADC_SingleEnded(2);
-
-  if (!measureResult->isInit)
-  {
-    measureResult->voltageExtern = adcChanel->computeVolts(adc0_new)*10.0;
-    measureResult->voltageIntern = adcChanel->computeVolts(adc1_new);
-    measureResult->dropVoltage   = adcChanel->computeVolts(adc2_new);  
-  }  
-  double voltageExtern_new = adcChanel->computeVolts(adc0_new)*10.0;
+  if (voltageExtern_new <= 0.0) voltageExtern_new = diffvoltageDiode * (-1.0);
   double voltageIntern_new = adcChanel->computeVolts(adc1_new);
   double dropVoltage_new   = adcChanel->computeVolts(adc2_new);
   
@@ -218,17 +234,17 @@ catch(const std::exception& e)
   double refVoltage = measureResult->voltageIntern/2;
   double deltaVoltage = measureResult->dropVoltage-refVoltage;
   
-  if (!measureResult->isInit)
-  {
-    measureResult->voltageOffset = deltaVoltage;
-    //measureResult->voltageOffset = 0.011;
-  }
-  measureResult->currentExtern = (deltaVoltage-measureResult->voltageOffset)*15.0 ;
+  // if (!measureResult->isInit)
+  // {
+  //   measureResult->voltageOffset = deltaVoltage;
+  // }
+  measureResult->currentExtern = (deltaVoltage-measureResult->voltageOffset)*measureResult->voltageFactor ;
   
   if (!measureResult->isInit)
   {
     measureResult->isInit = true;
   }
+  measureResult->voltageExternEff = measureResult->voltageExtern + measureResult->voltageDiode;
   measureMillis = millis();
 }
 
