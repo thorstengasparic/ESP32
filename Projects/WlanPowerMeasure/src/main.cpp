@@ -2,16 +2,22 @@
 #include <Wire.h>
 #include <SPI.h>
 #include "Adafruit_ADS1X15.h"
- //#include <EEPROM.h>
- //#include <EEPROMProvider.h>
- //#include <WlanConnetor.h>
- //#include <textreplacement.h>
- //#include <table.h>
+ #include <EEPROM.h>
+ #include <EEPROMProvider.h>
+ #include <WlanConnetor.h>
+ #include <textreplacement.h>
+ #include <table.h>
 #include <INA226.h>
 
 #define VERSION "1.0"
-#define SUS_LED LED_BUILTIN
+#define STATUS_LED LED_BUILTIN
 #define diffvoltageDiode 0.72
+
+String HttpContentFunction();
+EEPROMProvider* eeprom = NULL;
+WlanConnector *wlanConnector = NULL;
+void getValues(void);
+
 struct Measurement
 {
   bool isInit;
@@ -54,6 +60,13 @@ Adafruit_ADS1115* adsGND;
 void printvalues(String name, Measurement *measureResult);
 void InitGlobals(void)
 {
+
+  Wire.begin();
+
+  eeprom = new EEPROMProvider(VERSION);
+  wlanConnector = new WlanConnector(wifiModePin, STATUS_LED, eeprom);
+  wlanConnector->SetCallback(HttpContentFunction);
+
   adsVCC = new Adafruit_ADS1115();
   adsGND = new Adafruit_ADS1115();     
   adcChannel01 = new Measurement();
@@ -71,6 +84,9 @@ void InitGlobals(void)
   adcChannel01->adress = ADS1X15_ADDRESS;
   adcChannel02->adress = ADS1X15_ADDRESS+1;
 
+}
+void Calibrate(void)
+{
   adcChannel01->voltageDiode = diffvoltageDiode;
   adcChannel02->voltageDiode = diffvoltageDiode;
   inaChannel01->voltageDiode  = diffvoltageDiode;
@@ -82,44 +98,42 @@ void InitGlobals(void)
   adcChannel01->voltageFactor = 5.5;
   adcChannel02->voltageFactor = -14.7;
   inaChannel01->voltageFactor = 0.213;
-  
 }
 
 void setup() {
+
   Serial.begin(115200); // Starts the serial communication
   Serial.println("Init...");
 
   InitGlobals();
-  
-  Wire.begin();
+  Calibrate();
 
-  //eeprom = new EEPROMProvider(VERSION);
- // wlanConnector = new WlanConnector(wifiModePin, STATUS_LED, eeprom);
-
-  //wlanConnector->SetCallback(HttpContentFunction);
   InitINA();
   InitADS1X15(adsGND, adcChannel01);
   InitADS1X15(adsVCC, adcChannel02);
-  //eeprom->ArmVersionNumber();  
-  //wlanConnector->enableWDT(30);
+  
+  eeprom->ArmVersionNumber();  
+
+  wlanConnector->enableWDT(30);
 }
 
 unsigned long measureMillisPrintline = 0;
 void loop() {
   unsigned long currentMillis = millis();
-   //wlanConnector->Process();    
+   wlanConnector->Process();    
   ADS1X15getValues(adsGND, adcChannel01);
   ADS1X15getValues(adsVCC, adcChannel02);
   INA226getValues(inaChannel01);
 
-  if ((currentMillis- measureMillisPrintline) > 500)
+  /*if ((currentMillis- measureMillisPrintline) > 1000)
   {
     printvalues("ads01",  adcChannel01);
     printvalues("ads02",  adcChannel02);
     printvalues("ina01",  inaChannel01);
     measureMillisPrintline = currentMillis;
   }
-  delay(10);
+  */
+  delay(100);
    
 }
 
@@ -178,7 +192,7 @@ void printvalues(String name, Measurement *measureResult)
 unsigned long measureMillis = 0;
 void ADS1X15getValues(Adafruit_ADS1115 *adcChanel, Measurement *measureResult)
 {
-  double delta = 0.1;
+  double delta = 0.5;
   if(!InitADS1X15(adcChanel, measureResult))
   {
     //Serial.println("!measureResult->deviceAvailable in get"); 
@@ -233,11 +247,6 @@ void ADS1X15getValues(Adafruit_ADS1115 *adcChanel, Measurement *measureResult)
   
   double refVoltage = measureResult->voltageIntern/2;
   double deltaVoltage = measureResult->dropVoltage-refVoltage;
-  
-  // if (!measureResult->isInit)
-  // {
-  //   measureResult->voltageOffset = deltaVoltage;
-  // }
   measureResult->currentExtern = (deltaVoltage-measureResult->voltageOffset)*measureResult->voltageFactor ;
   
   if (!measureResult->isInit)
@@ -248,21 +257,83 @@ void ADS1X15getValues(Adafruit_ADS1115 *adcChanel, Measurement *measureResult)
   measureMillis = millis();
 }
 
+int count = 0;
+String tmpstrJson = "";
+String HttpContentFunction()
+{
+  tmpstrJson = tableHtmlPage;
+  tmpstrJson.replace(RPLC_BATTCURRENT, String (adcChannel02->currentExtern) );
+  tmpstrJson.replace(RPLC_LOADCURRENT, String (inaChannel01->currentExtern) );
+  tmpstrJson.replace(RPLC_SOLARCURRENT, String (adcChannel01->currentExtern) );
+  
+  tmpstrJson.replace(RPLC_BATTVOLTAGE, String (adcChannel02->voltageExternEff) );
+  tmpstrJson.replace(RPLC_LOADVOLTAGE, String (inaChannel01->voltageExternEff) );
+  tmpstrJson.replace(RPLC_SOLARVOLTAGE, String (adcChannel01->voltageExternEff) );
+  
+  double BattaryPower = adcChannel02->voltageExternEff * adcChannel02->currentExtern;
+  double LoadPower = inaChannel01->voltageExternEff * inaChannel01->currentExtern;
+  double SolarPower = adcChannel01->voltageExternEff * adcChannel01->currentExtern;
+  tmpstrJson.replace(RPLC_BATTPOWER, String (BattaryPower) );
+  tmpstrJson.replace(RPLC_LOADPOWER, String (LoadPower) );
+  tmpstrJson.replace(RPLC_SOLARPOWER, String (SolarPower) );
 
- String HttpContentFunction()
+  tmpstrJson.replace(RPLC_INFO, String (count++) );
+  
+ return tmpstrJson; 
+}
+/*
+String jsonHtmlPage ;
+
+String _HttpContentFunction()
  {
-      String jsonHtmlPage = "{\n"
-"   \"solar\":{\n"
-//"    \"V0A\":\""+String(volts0)+"\",\n"
-//"    \"V1V\":\""+String(volts1)+"\",\n"
-//"    \"V1V\":\""+String(volts2)+"\",\n"
-//"      \"current\":\""+String(measurecurrent)+"\",\n"
-//"      \"voltage\":\""+String(measurevoltage)+"\",\n"
-//"      \"power\":\""+String(measurepower)+"\",\n"
-//"   }\n"
-"}";
-  return jsonHtmlPage; 
+  return tableHtmlPage;
+  //return "wello horld: " + String(count);
+  
+      jsonHtmlPage = 
+      "{ \"count\": "+ String(count++)+",\n" 
+      "   \"solar\":{ "
+      "      \"panel\":{ "
+      "         \"voltage\":"+String(adcChannel01->voltageExternEff)+",\n" 
+      "         \"current\":"+String(adcChannel01->currentExtern)+",\n" 
+      "         \"power\":"+String(adcChannel01->voltageExternEff*adcChannel01->currentExtern)+",\n" 
+      "      }, "
+      "      \"battery\":{ "
+      "         \"voltage\":"+String(adcChannel02->voltageExternEff)+",\n" 
+      "         \"current\":"+String(adcChannel01->currentExtern)+",\n" 
+      "         \"power\":"+String(adcChannel02->voltageExternEff*adcChannel02->currentExtern)+",\n" 
+      "      }, "
+      "      \"load\":{ "
+      "         \"voltage\":"+String(inaChannel01->voltageExternEff)+",\n" 
+      "         \"current\":"+String(inaChannel01->currentExtern)+",\n" 
+      "         \"power\":"+String(inaChannel01->voltageExternEff*inaChannel01->currentExtern)+",\n" 
+      "      } "
+      "   } "
+      "} ";
+      return jsonHtmlPage; 
  } 
 
+
+
+"{ "
+"   \"solar\":{ "
+"      \"panel\":{ "
+"         \"voltage\" "
+"         \"current\":"+String("")+",\n" "
+"         \"power\":"+String("")+",\n" "
+"      }, "
+"      \"battery\":{ "
+"         \"voltage\":"+String("")+",\n" "
+"         \"current\":"+String("")+",\n" "
+"         \"power\":"+String("")+",\n" "
+"      }, "
+"      \"load\":{ "
+"         \"voltage\":"+String("")+",\n" "
+"         \"current\":"+String("")+",\n" "
+"         \"power\":"+String("")+",\n" "
+"      } "
+"   } "
+"} "
+
+*/
 
 
