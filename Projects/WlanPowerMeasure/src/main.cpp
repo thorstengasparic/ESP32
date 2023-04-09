@@ -121,9 +121,7 @@ unsigned long measureMillisPrintline = 0;
 void loop() {
   unsigned long currentMillis = millis();
    wlanConnector->Process();    
-  ADS1X15getValues(adsGND, adcChannel01);
-  ADS1X15getValues(adsVCC, adcChannel02);
-  INA226getValues(inaChannel01);
+  
 
   /*if ((currentMillis- measureMillisPrintline) > 1000)
   {
@@ -133,23 +131,16 @@ void loop() {
     measureMillisPrintline = currentMillis;
   }
   */
-  delay(100);
+  delay(10);
    
 }
 
-unsigned long measureMillisINA226 = 0;
 void INA226getValues(Measurement *inaChannel)
 {
-  unsigned long currentMillis = millis();
-  if ((currentMillis- measureMillisINA226) > 1000)
-  {
     inaChannel->voltageExtern = ina.getBusVoltage();
     inaChannel->voltageExternEff = inaChannel->voltageExtern + inaChannel->voltageDiode;
     inaChannel->dropVoltage = ina.getShuntVoltage_mV();
     inaChannel->currentExtern = inaChannel->dropVoltage * inaChannel->voltageFactor;
-    
-    measureMillisINA226 = currentMillis;
-  }
 }
 
 void InitINA()
@@ -166,6 +157,8 @@ bool InitADS1X15(Adafruit_ADS1115 *adcChanel, Measurement *measureResult)
 {
   if (measureResult->deviceAvailable) return true;
   
+  measureResult->voltageExternEff = -1.0;
+  measureResult->currentExtern = -1.0;
   measureResult->deviceAvailable = adcChanel->begin(measureResult->adress);
   if (!measureResult->deviceAvailable) 
   {
@@ -189,13 +182,14 @@ void printvalues(String name, Measurement *measureResult)
   Serial.print("\t Vo=");
   Serial.print(measureResult->voltageOffset, 3);
 }
-unsigned long measureMillis = 0;
+
 void ADS1X15getValues(Adafruit_ADS1115 *adcChanel, Measurement *measureResult)
 {
-  double delta = 0.5;
+  double delta = 1.0;
   if(!InitADS1X15(adcChanel, measureResult))
   {
-    //Serial.println("!measureResult->deviceAvailable in get"); 
+    measureResult->voltageExternEff = -1.0;
+    measureResult->currentExtern = -1.0;
     return;
   }
   try
@@ -254,28 +248,35 @@ void ADS1X15getValues(Adafruit_ADS1115 *adcChanel, Measurement *measureResult)
     measureResult->isInit = true;
   }
   measureResult->voltageExternEff = measureResult->voltageExtern + measureResult->voltageDiode;
-  measureMillis = millis();
 }
 
 int count = 0;
 String tmpstrJson = "";
 String HttpContentFunction()
 {
+  ADS1X15getValues(adsGND, adcChannel01);
+  ADS1X15getValues(adsVCC, adcChannel02);
+  INA226getValues(inaChannel01);
+
   tmpstrJson = tableHtmlPage;
+  
+  tmpstrJson.replace(RPLC_SOLARCURRENT, String (adcChannel01->currentExtern) );
   tmpstrJson.replace(RPLC_BATTCURRENT, String (adcChannel02->currentExtern) );
   tmpstrJson.replace(RPLC_LOADCURRENT, String (inaChannel01->currentExtern) );
-  tmpstrJson.replace(RPLC_SOLARCURRENT, String (adcChannel01->currentExtern) );
   
+  tmpstrJson.replace(RPLC_SOLARVOLTAGE, String (adcChannel01->voltageExternEff) );
   tmpstrJson.replace(RPLC_BATTVOLTAGE, String (adcChannel02->voltageExternEff) );
   tmpstrJson.replace(RPLC_LOADVOLTAGE, String (inaChannel01->voltageExternEff) );
-  tmpstrJson.replace(RPLC_SOLARVOLTAGE, String (adcChannel01->voltageExternEff) );
+
+  double SolarPower = adcChannel01->voltageExternEff * adcChannel01->currentExtern;  
+  tmpstrJson.replace(RPLC_SOLARPOWER, String (SolarPower) );
   
   double BattaryPower = adcChannel02->voltageExternEff * adcChannel02->currentExtern;
-  double LoadPower = inaChannel01->voltageExternEff * inaChannel01->currentExtern;
-  double SolarPower = adcChannel01->voltageExternEff * adcChannel01->currentExtern;
   tmpstrJson.replace(RPLC_BATTPOWER, String (BattaryPower) );
+  
+  double LoadPower = inaChannel01->voltageExternEff * inaChannel01->currentExtern;
   tmpstrJson.replace(RPLC_LOADPOWER, String (LoadPower) );
-  tmpstrJson.replace(RPLC_SOLARPOWER, String (SolarPower) );
+  
 
   tmpstrJson.replace(RPLC_INFO, String (count++) );
   
