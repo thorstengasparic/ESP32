@@ -201,6 +201,7 @@ bool InitADS1X15(Adafruit_ADS1115 *adcChanel, Measurement *measureResult)
 }
 void printvalues(String name, Measurement *measureResult)
 {
+  return;
   const std::lock_guard<std::mutex> lock(value_mtx);
   Serial.println("");
   Serial.print(name);
@@ -305,59 +306,3 @@ String HttpContentFunction()
   
  return tmpstrJson; 
 }
-/*
-String jsonHtmlPage ;
-
-String _HttpContentFunction()
- {
-  return tableHtmlPage;
-  //return "wello horld: " + String(count);
-  
-      jsonHtmlPage = 
-      "{ \"count\": "+ String(count++)+",\n" 
-      "   \"solar\":{ "
-      "      \"panel\":{ "
-      "         \"voltage\":"+String(adcChannel01->voltageExternEff)+",\n" 
-      "         \"current\":"+String(adcChannel01->currentExtern)+",\n" 
-      "         \"power\":"+String(adcChannel01->voltageExternEff*adcChannel01->currentExtern)+",\n" 
-      "      }, "
-      "      \"battery\":{ "
-      "         \"voltage\":"+String(adcChannel02->voltageExternEff)+",\n" 
-      "         \"current\":"+String(adcChannel01->currentExtern)+",\n" 
-      "         \"power\":"+String(adcChannel02->voltageExternEff*adcChannel02->currentExtern)+",\n" 
-      "      }, "
-      "      \"load\":{ "
-      "         \"voltage\":"+String(inaChannel01->voltageExternEff)+",\n" 
-      "         \"current\":"+String(inaChannel01->currentExtern)+",\n" 
-      "         \"power\":"+String(inaChannel01->voltageExternEff*inaChannel01->currentExtern)+",\n" 
-      "      } "
-      "   } "
-      "} ";
-      return jsonHtmlPage; 
- } 
-
-
-
-"{ "
-"   \"solar\":{ "
-"      \"panel\":{ "
-"         \"voltage\" "
-"         \"current\":"+String("")+",\n" "
-"         \"power\":"+String("")+",\n" "
-"      }, "
-"      \"battery\":{ "
-"         \"voltage\":"+String("")+",\n" "
-"         \"current\":"+String("")+",\n" "
-"         \"power\":"+String("")+",\n" "
-"      }, "
-"      \"load\":{ "
-"         \"voltage\":"+String("")+",\n" "
-"         \"current\":"+String("")+",\n" "
-"         \"power\":"+String("")+",\n" "
-"      } "
-"   } "
-"} "
-
-*/
-
-
