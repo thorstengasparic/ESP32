@@ -6,6 +6,7 @@
  #include <EEPROMProvider.h>
  #include <WlanConnetor.h>
  #include <textreplacement.h>
+ #include <RestfullRespose.h>
  #include <table.h>
 #include <INA226.h>
 
@@ -214,82 +215,7 @@ void printvalues(String name, Measurement *measureResult)
   Serial.print("\t Vo=");
   Serial.print(measureResult->voltageOffset, 3);
 }
-/*
-void _ADS1X15getValues(Adafruit_ADS1115 *adcChanel, Measurement *measureResult)
-{
-  const std::lock_guard<std::mutex> lock(value_mtx);
-  double delta = 1.0;
-  if(!InitADS1X15(adcChanel, measureResult))
-  {
-    measureResult->voltageExternEff = -1.0;
-    measureResult->currentExtern = -1.0;
-    return;
-  }
-  try
-  {
-    int16_t adc0_new = adcChanel->readADC_SingleEnded(0);
-    int16_t adc1_new = adcChanel->readADC_SingleEnded(1);
-    int16_t adc2_new = adcChanel->readADC_SingleEnded(2);
-    if (adc0_new == 0 && adc1_new == 0 && adc2_new == 0)
-    {
-      measureResult->voltageExternEff = -2.0;
-      measureResult->currentExtern = -2.0;
-      measureResult->deviceAvailable = false;
-      return;
-    }
-    
-    if (!measureResult->isInit)
-    {
-      measureResult->voltageExtern = adcChanel->computeVolts(adc0_new)*10.0;
-      measureResult->voltageIntern = adcChanel->computeVolts(adc1_new);
-      measureResult->dropVoltage   = adcChanel->computeVolts(adc2_new);  
-    }  
-    double voltageExtern_new = adcChanel->computeVolts(adc0_new)*10.0;
-    if (voltageExtern_new <= 0.0) 
-      voltageExtern_new = diffvoltageDiode * (-1.0);
-    double voltageIntern_new = adcChanel->computeVolts(adc1_new);
-    double dropVoltage_new   = adcChanel->computeVolts(adc2_new);
-  }
-  catch(const std::exception& e)
-  {
-    measureResult->deviceAvailable = false;
-    Serial.print("exception "); 
-    return;
-  }
 
-  int16_t adc0_new = adcChanel->readADC_SingleEnded(0);
-  int16_t adc1_new = adcChanel->readADC_SingleEnded(1);
-  int16_t adc2_new = adcChanel->readADC_SingleEnded(2);
-
-  if (!measureResult->isInit)
-  {
-    measureResult->voltageExtern = adcChanel->computeVolts(adc0_new)*10.0;
-    if (measureResult->voltageExtern <= 0.0) 
-      measureResult->voltageExtern = diffvoltageDiode * (-1.0);
-    measureResult->voltageIntern = adcChanel->computeVolts(adc1_new);
-    measureResult->dropVoltage   = adcChanel->computeVolts(adc2_new);  
-  }  
-  double voltageExtern_new = adcChanel->computeVolts(adc0_new)*10.0;
-  if (voltageExtern_new <= 0.0) voltageExtern_new = diffvoltageDiode * (-1.0);
-  double voltageIntern_new = adcChanel->computeVolts(adc1_new);
-  double dropVoltage_new   = adcChanel->computeVolts(adc2_new);
-  
-  
-  measureResult->voltageExtern = (measureResult->voltageExtern*(1.0-delta)) + (voltageExtern_new * delta);
-  measureResult->voltageIntern = (measureResult->voltageIntern*(1.0-delta)) + (voltageIntern_new * delta);
-  measureResult->dropVoltage = (measureResult->dropVoltage*(1.0-delta)) + (dropVoltage_new* delta);
-  
-  double refVoltage = measureResult->voltageIntern/2;
-  double deltaVoltage = measureResult->dropVoltage-refVoltage;
-  measureResult->currentExtern = (deltaVoltage-measureResult->voltageOffset)*measureResult->voltageFactor ;
-  
-  if (!measureResult->isInit)
-  {
-    measureResult->isInit = true;
-  }
-  measureResult->voltageExternEff = measureResult->voltageExtern + measureResult->voltageDiode;
-}
-*/
 void ADS1X15getValues(Adafruit_ADS1115 *adcChanel, Measurement *measureResult)
 {
   const std::lock_guard<std::mutex> lock(value_mtx);
@@ -355,11 +281,11 @@ String HttpContentFunction()
 {
   const std::lock_guard<std::mutex> lock(value_mtx);
 
-  tmpstrJson = tableHtmlPage;
+  tmpstrJson = jsonpage;//tableHtmlPage;
   
-  tmpstrJson.replace(RPLC_SOLARCURRENT, String (adcChannel01->currentExtern) );
-  tmpstrJson.replace(RPLC_BATTCURRENT, String (adcChannel02->currentExtern) );
-  tmpstrJson.replace(RPLC_LOADCURRENT, String (inaChannel01->currentExtern) );
+  tmpstrJson.replace(RPLC_SOLARCURRENT, String (adcChannel01->currentExtern*-1.0) );
+  tmpstrJson.replace(RPLC_BATTCURRENT, String (adcChannel02->currentExtern*-1.0) );
+  tmpstrJson.replace(RPLC_LOADCURRENT, String (inaChannel01->currentExtern*-1.0) );
   
   tmpstrJson.replace(RPLC_SOLARVOLTAGE, String (adcChannel01->voltageExternEff) );
   tmpstrJson.replace(RPLC_BATTVOLTAGE, String (adcChannel02->voltageExternEff) );
