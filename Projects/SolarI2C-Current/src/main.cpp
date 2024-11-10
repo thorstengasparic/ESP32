@@ -35,7 +35,7 @@ double SolarVoltage = 0;
 double SolarPower = 0;
 double BattaryPower = 0;
 double LoadPower = 0;
-double SumPower = 0;
+double LostPower = 0;
 
 void printOut();
 
@@ -121,7 +121,7 @@ void printOut()
   tmpstrJson.replace(loadpower, String (LoadPower) );
   tmpstrJson.replace(solarpower, String (SolarPower) );
 
-  tmpstrJson.replace(sumpower, String (SumPower) );
+  tmpstrJson.replace(lostpower, String (LostPower) );
   
  return tmpstrJson; 
  } 
@@ -136,21 +136,21 @@ void GetSolarValues()
       double shuntvoltage1 = ina3221.getShuntVoltage_mV(BATTERY_CHANNEL);
       BattaryCurrent = -ina3221.getCurrent_mA(BATTERY_CHANNEL);
       BattaryVoltage = busvoltage1 + (shuntvoltage1 / 1000);
-      BattaryPower = BattaryCurrent*BattaryVoltage;;
+      BattaryPower = BattaryCurrent*BattaryVoltage/ 1000;
 
       double busvoltage2 = ina3221.getBusVoltage_V(LOAD_CHANNEL);
       double shuntvoltage2 = ina3221.getShuntVoltage_mV(LOAD_CHANNEL);
       LoadCurrent = ina3221.getCurrent_mA(LOAD_CHANNEL);
       LoadVoltage = busvoltage2 + (shuntvoltage2 / 1000);
-      LoadPower = LoadCurrent*LoadVoltage;
+      LoadPower = LoadCurrent*LoadVoltage/ 1000;
 
       double busvoltage3 = ina3221.getBusVoltage_V(SOLAR_CELL_CHANNEL);
       double shuntvoltage3 = ina3221.getShuntVoltage_mV(SOLAR_CELL_CHANNEL);
       SolarCurrent = -ina3221.getCurrent_mA(SOLAR_CELL_CHANNEL);
       SolarVoltage = busvoltage3 + (shuntvoltage3 / 1000);
-      SolarPower = SolarCurrent*SolarVoltage;
+      SolarPower = SolarCurrent*SolarVoltage/ 1000;
       
-      SumPower = -(SolarPower +BattaryPower);
+      LostPower = LoadPower-(SolarPower + BattaryPower);
 
     //Serial.println(HttpContentFunction());
     //loopTest() ;
