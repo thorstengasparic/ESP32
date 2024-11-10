@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 {
 	"folders": [
 		{
@@ -25,4 +26,101 @@
 			"string": "cpp"
 		}
 	}
+=======
+{
+	"folders": [
+		{
+			"path": "WlanPing"
+		},
+		{
+			"path": "WlanPong"
+		},
+		{
+			"name": "SolarCurrentWiFi",
+			"path": "SolarCurrentWiFi"
+		},
+		{
+			"name": "I2c_test",
+			"path": "I2c_test"
+		},
+		{
+			"name": "SolarI2C-Current",
+			"path": "SolarI2C-Current"
+		},
+		{
+			"name": "WlanPowerMeasure",
+			"path": "WlanPowerMeasure"
+		},
+		{
+			"name": "MiniSerial",
+			"path": "MiniSerial"
+		},
+		{
+			"name": "EspSerial",
+			"path": "EspSerial"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"*.tcc": "cpp",
+			"string": "cpp",
+			"array": "cpp",
+			"atomic": "cpp",
+			"cctype": "cpp",
+			"chrono": "cpp",
+			"clocale": "cpp",
+			"cmath": "cpp",
+			"cstdarg": "cpp",
+			"cstddef": "cpp",
+			"cstdint": "cpp",
+			"cstdio": "cpp",
+			"cstdlib": "cpp",
+			"cstring": "cpp",
+			"ctime": "cpp",
+			"cwchar": "cpp",
+			"cwctype": "cpp",
+			"deque": "cpp",
+			"list": "cpp",
+			"unordered_map": "cpp",
+			"unordered_set": "cpp",
+			"vector": "cpp",
+			"exception": "cpp",
+			"algorithm": "cpp",
+			"functional": "cpp",
+			"iterator": "cpp",
+			"map": "cpp",
+			"memory": "cpp",
+			"memory_resource": "cpp",
+			"numeric": "cpp",
+			"optional": "cpp",
+			"random": "cpp",
+			"ratio": "cpp",
+			"set": "cpp",
+			"string_view": "cpp",
+			"system_error": "cpp",
+			"tuple": "cpp",
+			"type_traits": "cpp",
+			"utility": "cpp",
+			"fstream": "cpp",
+			"initializer_list": "cpp",
+			"iomanip": "cpp",
+			"iosfwd": "cpp",
+			"istream": "cpp",
+			"limits": "cpp",
+			"new": "cpp",
+			"ostream": "cpp",
+			"sstream": "cpp",
+			"stdexcept": "cpp",
+			"streambuf": "cpp",
+			"cinttypes": "cpp",
+			"typeinfo": "cpp",
+			"bit": "cpp",
+			"compare": "cpp",
+			"concepts": "cpp",
+			"netfwd": "cpp",
+			"ranges": "cpp",
+			"btstack.h": "c"
+		}
+	}
+>>>>>>> e07f5bd753f57d52714708a31c7a487c3d069c12
 }
