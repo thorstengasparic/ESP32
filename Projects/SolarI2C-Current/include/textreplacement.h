@@ -11,6 +11,6 @@ const String loadcurrent = "$loadcurrent$";
 const String solarpower = "$solarpower$";
 const String batterypower = "$batterypower$";
 const String loadpower = "$loadpower$";
-const String sumpower = "$sumpower$";
+const String lostpower = "$lostpower$";
 
 #endif

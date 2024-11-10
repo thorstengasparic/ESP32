@@ -17,10 +17,6 @@
 		{
 			"name": "SolarI2C-Current",
 			"path": "SolarI2C-Current"
-		},
-		{
-			"name": "BlueToothTest",
-			"path": "BlueToothTest"
 		}
 	],
 	"settings": {

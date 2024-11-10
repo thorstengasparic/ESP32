@@ -1,96 +1,150 @@
-//
-//   SDL_Arduino_INA3221 Library Test Code
-//   SDL_Arduino_INA3221.cpp Arduino code - runs in continuous mode
-//   Version 1.2
-//   SwitchDoc Labs   September 2019
-//
-//
-// This was designed for SunAirPlus - Solar Power Controller - www.switchdoc.com
-//
+/*********
+  Rui Santos
+  Complete project details at https://randomnerdtutorials.com  
+*********/
+//  #include <Wire.h>
+//  #include <SPI.h>
+//  #include <Adafruit_Sensor.h>
+
+// #include <Wire.h>
+ 
+// void setup() {
+//   Wire.begin();
+//   Serial.begin(115200);
+//   Serial.println("\nI2C Scanner");
+// }
+ 
+// void loop() {
+//   byte error, address;
+//   int nDevices;
+//   Serial.println("Scanning...");
+//   nDevices = 0;
+//   for(address = 1; address < 127; address++ ) {
+//     Wire.beginTransmission(address);
+//     error = Wire.endTransmission();
+//     if (error == 0) {
+//       Serial.print("I2C device found at address 0x");
+//       if (address<16) {
+//         Serial.print("0");
+//       }
+//       Serial.println(address,HEX);
+//       nDevices++;
+//     }
+//     else if (error==4) {
+//       Serial.print("Unknow error at address 0x");
+//       if (address<16) {
+//         Serial.print("0");
+//       }
+//       Serial.println(address,HEX);
+//     }    
+//   }
+//   if (nDevices == 0) {
+//     Serial.println("No I2C devices found\n");
+//   }
+//   else {
+//     Serial.println("done\n");
+//   }
+//   delay(5000);          
+// }
+
+// /***************************************************************************
+//   This is a library for the BMP280 humidity, temperature & pressure sensor
+
+//   Designed specifically to work with the Adafruit BMP280 Breakout
+//   ----> http://www.adafruit.com/products/2651
+
+//   These sensors use I2C or SPI to communicate, 2 or 4 pins are required
+//   to interface.
+
+//   Adafruit invests time and resources providing this open source code,
+//   please support Adafruit andopen-source hardware by purchasing products
+//   from Adafruit!
+
+//   Written by Limor Fried & Kevin Townsend for Adafruit Industries.
+//   BSD license, all text above must be included in any redistribution
+//  ***************************************************************************/
+
+#include <Adafruit_BMP280.h>
+#include <Adafruit_AHTX0.h>
 
 
+#define BMP_SCK  (13)
+#define BMP_MISO (12)
+#define BMP_MOSI (11)
+#define BMP_CS   (10)
 
-#include <Wire.h>
-#include "SDL_Arduino_INA3221.h"
+Adafruit_BMP280 bmp; // I2C
+//Adafruit_BMP280 bmp(BMP_CS); // hardware SPI
+//Adafruit_BMP280 bmp(BMP_CS, BMP_MOSI, BMP_MISO,  BMP_SCK);
+Adafruit_AHTX0 aht;
+void setup1() ;
+void loop1() ;
 
-SDL_Arduino_INA3221 ina3221;
+void setup1() {
+  Serial.begin(115200);  
+  Serial.println(F("BMP280 Forced Mode Test."));
 
+  //if (!bmp.begin(BMP280_ADDRESS_ALT, BMP280_CHIPID)) {
+  if (!bmp.begin()) {
+    Serial.println(F("Could not find a valid BMP280 sensor, check wiring or "
+                      "try a different address!"));
+    while (1) delay(10);
+  }
 
-//static const uint8_t SDA = 21;
-//static const uint8_t SCL = 22;
-
-// the three channels of the INA3221 named for SunAirPlus Solar Power Controller channels (www.switchdoc.com)
-#define LIPO_BATTERY_CHANNEL 1
-#define SOLAR_CELL_CHANNEL 2
-#define OUTPUT_CHANNEL 3
-
-void setup(void) 
-{
-    
-  Serial.begin(115200);
-  Serial.println("SDA_Arduino_INA3221_Test");
-  
-  Serial.println("Measuring voltage and current with ina3221 ...");
-  ina3221.begin();
-
-  Serial.print("Manufactures ID=0x");
-  int MID;
-  MID = ina3221.getManufID();
-  Serial.println(MID,HEX);
+  /* Default settings from datasheet. */
+  bmp.setSampling(Adafruit_BMP280::MODE_FORCED,     /* Operating Mode. */
+                  Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
+                  Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
+                  Adafruit_BMP280::FILTER_X16,      /* Filtering. */
+                  Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
+                   setup1() ;
 }
 
-void loop(void) 
-{
-  
-  Serial.println("------------------------------");
-  float shuntvoltage1 = 0;
-  float busvoltage1 = 0;
-  float current_mA1 = 0;
-  float loadvoltage1 = 0;
+void loop1() {
+  // must call this to wake sensor up and get new measurement data
+  // it blocks until measurement is complete
+  if (bmp.takeForcedMeasurement()) {
+    // can now print out the new measurements
+    Serial.print(F("Temperature = "));
+    Serial.print(bmp.readTemperature());
+    Serial.println(" *C");
+
+    Serial.print(F("Pressure = "));
+    Serial.print(bmp.readPressure());
+    Serial.println(" Pa");
+
+    Serial.print(F("Approx altitude = "));
+    Serial.print(bmp.readAltitude(1020.7)); /* Adjusted to local forecast! */
+    Serial.println(" m");
+
+    Serial.println();
+    delay(2000);
+  } else {
+    Serial.println("Forced measurement failed!");
+  }
+    loop1();
+
+}
 
 
-  busvoltage1 = ina3221.getBusVoltage_V(LIPO_BATTERY_CHANNEL);
-  shuntvoltage1 = ina3221.getShuntVoltage_mV(LIPO_BATTERY_CHANNEL);
-  current_mA1 = -ina3221.getCurrent_mA(LIPO_BATTERY_CHANNEL);  // minus is to get the "sense" right.   - means the battery is charging, + that it is discharging
-  loadvoltage1 = busvoltage1 + (shuntvoltage1 / 1000);
-  
-  Serial.print("LIPO_Battery Bus Voltage:   "); Serial.print(busvoltage1); Serial.println(" V");
-  Serial.print("LIPO_Battery Shunt Voltage: "); Serial.print(shuntvoltage1); Serial.println(" mV");
-  Serial.print("LIPO_Battery Load Voltage:  "); Serial.print(loadvoltage1); Serial.println(" V");
-  Serial.print("LIPO_Battery Current 1:       "); Serial.print(current_mA1); Serial.println(" mA");
-  Serial.println("");
 
-  float shuntvoltage2 = 0;
-  float busvoltage2 = 0;
-  float current_mA2 = 0;
-  float loadvoltage2 = 0;
 
-  busvoltage2 = ina3221.getBusVoltage_V(SOLAR_CELL_CHANNEL);
-  shuntvoltage2 = ina3221.getShuntVoltage_mV(SOLAR_CELL_CHANNEL);
-  current_mA2 = -ina3221.getCurrent_mA(SOLAR_CELL_CHANNEL);
-  loadvoltage2 = busvoltage2 + (shuntvoltage2 / 1000);
-  
-  Serial.print("Solar Cell Bus Voltage 2:   "); Serial.print(busvoltage2); Serial.println(" V");
-  Serial.print("Solar Cell Shunt Voltage 2: "); Serial.print(shuntvoltage2); Serial.println(" mV");
-  Serial.print("Solar Cell Load Voltage 2:  "); Serial.print(loadvoltage2); Serial.println(" V");
-  Serial.print("Solar Cell Current 2:       "); Serial.print(current_mA2); Serial.println(" mA");
-  Serial.println("");
+void setup() {
+  Serial.begin(115200);
+  Serial.println("Adafruit AHT10/AHT20 demo!");
 
-  float shuntvoltage3 = 0;
-  float busvoltage3 = 0;
-  float current_mA3 = 0;
-  float loadvoltage3 = 0;
+  if (! aht.begin()) {
+    Serial.println("Could not find AHT? Check wiring");
+    while (1) delay(10);
+  }
+  Serial.println("AHT10 or AHT20 found");
+}
 
-  busvoltage3 = ina3221.getBusVoltage_V(OUTPUT_CHANNEL);
-  shuntvoltage3 = ina3221.getShuntVoltage_mV(OUTPUT_CHANNEL);
-  current_mA3 = ina3221.getCurrent_mA(OUTPUT_CHANNEL);
-  loadvoltage3 = busvoltage3 + (shuntvoltage3 / 1000);
-  
-  Serial.print("Output Bus Voltage 3:   "); Serial.print(busvoltage3); Serial.println(" V");
-  Serial.print("Output Shunt Voltage 3: "); Serial.print(shuntvoltage3); Serial.println(" mV");
-  Serial.print("Output Load Voltage 3:  "); Serial.print(loadvoltage3); Serial.println(" V");
-  Serial.print("Output Current 3:       "); Serial.print(current_mA3); Serial.println(" mA");
-  Serial.println("");
+void loop() {
+  sensors_event_t humidity, temp;
+  aht.getEvent(&humidity, &temp);// populate temp and humidity objects with fresh data
+  Serial.print("Temperature: "); Serial.print(temp.temperature); Serial.println(" degrees C");
+  Serial.print("Humidity: "); Serial.print(humidity.relative_humidity); Serial.println("% rH");
 
-  delay(2000);
+  delay(500);
 }
