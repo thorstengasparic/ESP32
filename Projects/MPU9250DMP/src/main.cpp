@@ -1,93 +1,86 @@
-/************************************************************
-A library for reading data from the MPU9250 using its on board DMP (Digital
-Motion Processor) to offload quaternion calculation, step-counting, and 
-orientation-determining off to the IMU.
+#include "Arduino.h"
+#include "MPU9250.h"
 
-This code was tested on an Adafruit ESP32 Feather Huzzah but it should work 
-for any ESP32 based device out there.
+MPU9250 mpu;
 
-This code was based on the Sparkfun MPU9250 Library by:
-Jim Lindblom @ SparkFun Electronics
-original creation date: November 23, 2016
-https://github.com/sparkfun/SparkFun_MPU9250_DMP_Arduino_Library
+void print_roll_pitch_yaw();
+void print_calibration();
 
-The library was designed to work with SAMD boards and so it had
-to be modified to work with ESP32 devices. This library works for both
+void setup() {
+    Serial.begin(115200);
+    Wire.begin();
+    delay(2000);
 
-The MPU-9250's digital motion processor (DMP) can calculate
-four unit quaternions, which can be used to represent the
-rotation of an object.
-
-This exmaple demonstrates how to configure the DMP to 
-calculate quaternions, and prints them out to the serial
-monitor. It also calculates pitch, roll, and yaw from those
-values.
-*************************************************************/
-#include <SparkFunMPU9250-DMP.h>
-
-void printIMUData(void);
-#ifdef defined(SAMD)
- #define SerialPort SerialUSB
-#else
-  #define SerialPort Serial
-#endif
-
-MPU9250_DMP imu;
-
-void setup() 
-{
-  SerialPort.begin(115200);
-
-  // Call imu.begin() to verify communication and initialize
-  if (imu.begin() != INV_SUCCESS)
-  {
-    while (1)
-    {
-      SerialPort.println("Unable to communicate with MPU-9250");
-      SerialPort.println("Check connections, and try again.");
-      SerialPort.println();
-      delay(5000);
+    if (!mpu.setup(0x68)) {  // change to your own address
+        while (1) {
+            Serial.println("MPU connection failed. Please check your connection with `connection_check` example.");
+            delay(5000);
+        }
     }
-  }
-  
-  imu.dmpBegin(DMP_FEATURE_6X_LP_QUAT | // Enable 6-axis quat
-               DMP_FEATURE_GYRO_CAL, // Use gyro calibration
-              10); // Set DMP FIFO rate to 10 Hz
-  // DMP_FEATURE_LP_QUAT can also be used. It uses the 
-  // accelerometer in low-power mode to estimate quat's.
-  // DMP_FEATURE_LP_QUAT and 6X_LP_QUAT are mutually exclusive
+
+    // calibrate anytime you want to
+    Serial.println("Accel Gyro calibration will start in 5sec.");
+    Serial.println("Please leave the device still on the flat plane.");
+    mpu.verbose(true);
+    delay(5000);
+    mpu.calibrateAccelGyro();
+
+    Serial.println("Mag calibration will start in 5sec.");
+    Serial.println("Please Wave device in a figure eight until done.");
+    delay(5000);
+    mpu.calibrateMag();
+
+    print_calibration();
+    mpu.verbose(false);
 }
 
-void loop() 
-{
-  // Check for new data in the FIFO
-  if ( imu.fifoAvailable() )
-  {
-    // Use dmpUpdateFifo to update the ax, gx, mx, etc. values
-    if ( imu.dmpUpdateFifo() == INV_SUCCESS)
-    {
-      // computeEulerAngles can be used -- after updating the
-      // quaternion values -- to estimate roll, pitch, and yaw
-      imu.computeEulerAngles();
-      printIMUData();
+void loop() {
+    if (mpu.update()) {
+        static uint32_t prev_ms = millis();
+        if (millis() > prev_ms + 25) {
+            print_roll_pitch_yaw();
+            prev_ms = millis();
+        }
     }
-  }
 }
 
-void printIMUData(void)
-{  
-  // After calling dmpUpdateFifo() the ax, gx, mx, etc. values
-  // are all updated.
-  // Quaternion values are, by default, stored in Q30 long
-  // format. calcQuat turns them into a float between -1 and 1
-  float q0 = imu.calcQuat(imu.qw);
-  float q1 = imu.calcQuat(imu.qx);
-  float q2 = imu.calcQuat(imu.qy);
-  float q3 = imu.calcQuat(imu.qz);
-
-  //SerialPort.println("Q: " + String(q0, 4) + ", " +  String(q1, 4) + ", " + String(q2, 4) +   ", " + String(q3, 4));
-  SerialPort.println("R/P/Y: " + String(imu.roll) + ", " + String(imu.pitch) + ", " + String(imu.yaw));
-  //SerialPort.println("Time: " + String(imu.time) + " ms");
-  SerialPort.println();
+void print_roll_pitch_yaw() {
+    Serial.print("Yaw, Pitch, Roll: ");
+    Serial.print(mpu.getYaw(), 2);
+    Serial.print(", ");
+    Serial.print(mpu.getPitch(), 2);
+    Serial.print(", ");
+    Serial.println(mpu.getRoll(), 2);
 }
 
+void print_calibration() {
+    Serial.println("< calibration parameters >");
+    Serial.println("accel bias [g]: ");
+    Serial.print(mpu.getAccBiasX() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
+    Serial.print(", ");
+    Serial.print(mpu.getAccBiasY() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
+    Serial.print(", ");
+    Serial.print(mpu.getAccBiasZ() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
+    Serial.println();
+    Serial.println("gyro bias [deg/s]: ");
+    Serial.print(mpu.getGyroBiasX() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
+    Serial.print(", ");
+    Serial.print(mpu.getGyroBiasY() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
+    Serial.print(", ");
+    Serial.print(mpu.getGyroBiasZ() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
+    Serial.println();
+    Serial.println("mag bias [mG]: ");
+    Serial.print(mpu.getMagBiasX());
+    Serial.print(", ");
+    Serial.print(mpu.getMagBiasY());
+    Serial.print(", ");
+    Serial.print(mpu.getMagBiasZ());
+    Serial.println();
+    Serial.println("mag scale []: ");
+    Serial.print(mpu.getMagScaleX());
+    Serial.print(", ");
+    Serial.print(mpu.getMagScaleY());
+    Serial.print(", ");
+    Serial.print(mpu.getMagScaleZ());
+    Serial.println();
+}
