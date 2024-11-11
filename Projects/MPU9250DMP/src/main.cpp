@@ -33,11 +33,31 @@ void setup() {
     print_calibration();
     mpu.verbose(false);
 }
+int count =0;
+float roll=0.0;
+float pitch=0.0;
+float yaw=0.0;
+float rollInit=0.0;
+float pitchInit=0.0;
+float yawInit=0.0;
+float lowPassWeight = 0.01;
 
 void loop() {
     if (mpu.update()) {
         static uint32_t prev_ms = millis();
+        
+        roll = roll *(1.0-lowPassWeight) + mpu.getRoll() * lowPassWeight;
+        pitch = pitch *(1.0-lowPassWeight) + mpu.getPitch() * lowPassWeight;
+        yaw = yaw *(1.0-lowPassWeight) + mpu.getYaw() * lowPassWeight;
+        
         if (millis() > prev_ms + 25) {
+          count++;
+          if (count == 0)
+            {
+              rollInit=roll;
+              pitchInit=pitch;
+              yawInit=yaw;
+            } 
             print_roll_pitch_yaw();
             prev_ms = millis();
         }
@@ -46,11 +66,11 @@ void loop() {
 
 void print_roll_pitch_yaw() {
     Serial.print("Yaw, Pitch, Roll: ");
-    Serial.print(mpu.getYaw(), 2);
+    Serial.print(yaw - yawInit, 1);
     Serial.print(", ");
-    Serial.print(mpu.getPitch(), 2);
+    Serial.print(pitch - pitchInit, 1);
     Serial.print(", ");
-    Serial.println(mpu.getRoll(), 2);
+    Serial.println(roll - rollInit, 1);
 }
 
 void print_calibration() {
