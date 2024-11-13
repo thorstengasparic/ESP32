@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "dgSpecHash": "hBrziN4FEcR9Wb/gJK8cvi2n9oECAxRdkTYLyosRQSn9U+J7e0kMmm3DG9gpj/X8J/otj8nWiSycXwINv5qd8g==",
+  "success": true,
+  "projectFilePath": "E:\\data\\develop\\github\\esp\\Projects\\IMU-Visual\\IMU-Visual\\IMU-Visual\\IMU-Visual.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Thorsten\\.nuget\\packages\\microsoft.netcore.platforms\\1.1.0\\microsoft.netcore.platforms.1.1.0.nupkg.sha512",
+    "C:\\Users\\Thorsten\\.nuget\\packages\\netstandard.library\\2.0.3\\netstandard.library.2.0.3.nupkg.sha512",
+    "C:\\Users\\Thorsten\\.nuget\\packages\\system.numerics.vectors\\4.5.0\\system.numerics.vectors.4.5.0.nupkg.sha512",
+    "C:\\Users\\Thorsten\\.nuget\\packages\\xamarin.essentials\\1.7.0\\xamarin.essentials.1.7.0.nupkg.sha512",
+    "C:\\Users\\Thorsten\\.nuget\\packages\\xamarin.forms\\5.0.0.2196\\xamarin.forms.5.0.0.2196.nupkg.sha512"
+  ],
+  "logs": []
+}

@@ -1,0 +1,1 @@
+E:\data\develop\github\esp\Projects\IMU-Visual\IMU-Visual\IMU-Visual.UWP\IMU-Visual.UWP.csproj;x86
