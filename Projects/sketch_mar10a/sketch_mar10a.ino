@@ -11,35 +11,43 @@ void SetAllWireModesAsInput(void);
 void SetExclusiveAsOutput(byte wireNo );
 bool isValidWireNo(byte wireNo);
 void SetWireMode(byte wireNo, byte mode);
+void ClearConnections(void);
 
+
+#define CONNECTION_NOTSET -1
 
 #define maxwires 4 
+#define connectionRows 2
 byte wires[maxwires]{wire00, wire01, wire02, wire03 };
+byte connections[maxwires][maxwires];
+
  
 void setup() 
 {
+   Serial.begin(115200);
    SetAllWireModesAsInput();
+   ClearConnections();
+   Serial.println("Go");
 }
  
  byte i =0;
 void loop() 
 {
- SetExclusiveAsOutput(i);
- 
- SetWire(i,HIGH);
- 
- delay(500);
-  //SetAllWireModesAsInput();
-  SetWire(i,LOW);
- delay(500);
- i++;
- if (i >= maxwires) i =0;
+  ClearConnections();
+  FillConnectedMatrix();
+  PrintConnections();
+  delay(500);
 }
 
 bool SetWire(byte wireNo, byte status)
 {
   digitalWrite(GetGpio(wireNo), status);
   return true;
+}
+
+byte GetWire(byte wireNo)
+{
+  return digitalRead(GetGpio(wireNo));
 }
 
 bool isValidWireNo(byte wireNo)
@@ -78,6 +86,78 @@ void SetAllWireModesAsInput()
     //digitalWrite(gpio, LOW);
    
   }
+}
 
+void FillConnectedMatrix()
+{
+  for (byte row = 0; row <  maxwires; row ++)
+  {
+    for (byte col = 0; col <  maxwires; col ++)
+    {
+      if (Connected(row,col))
+      {
+        connections[row][col] =row;
+      }
+      else
+      {
+        connections[row][col] =CONNECTION_NOTSET;
+      }
+    }
+  }
+}
+
+void SetResultTable()
+{
+  for (byte row = 0; row <  maxwires; row ++)
+  {
+    byte cCount = ConnectionCount(row);
+    if (cCount > 0)
+  }
+}
+
+
+byte ConnectionCount(byte wire)
+{
+  byte connections = 0;
+  for (byte row = 0; row <  maxwires; row ++)
+  {
+    if (connections[row][wire] != CONNECTION_NOTSET) 
+      connections++;
+  }
+  return connections-1; // 
+}
+
+bool Connected(byte wireA, byte wireB)
+{
+   SetExclusiveAsOutput(wireA);
+   byte wireAState = HIGH;
+   SetWire(wireA, wireAState);
+   byte wireBState = GetWire(wireB);
+   return  wireAState == wireBState;
+}
+
+
+void PrintConnections()
+{
+  for (byte row = 0; row< maxwires; row ++)
+  {
+    for (byte wire = 0; wire <maxwires; wire ++)
+    {
+      Serial.print((char)(connections[row][wire]+(byte)'1'));
+    }
+    Serial.println();
+  }
+  Serial.println();
+}
+
+void ClearConnections()
+{
+  for (byte row = 0; row < maxwires; row ++)
+  {
+    for (byte wire = 0; wire < maxwires; wire ++)
+    {
+      connections[row][wire] = CONNECTION_NOTSET;
+    }
+  }
 }
 
