@@ -1,6 +1,22 @@
 #include "Arduino.h"
 #include "MPU9250.h"
 
+#include "BluetoothSerial.h"
+
+BluetoothSerial SerialBT;
+enum MsgType {info=0, error=1, imu=2 };
+#define msgDelimiter '|'
+#define msgTokenInfo "I"
+#define msgTokenError "E"
+#define msgTokenImu "M"
+#define msgTokenInvalid "x"
+
+void postMessage(MsgType mType, String message);
+void postInfo(String message);
+void postError(String message);
+void postValues(float pitch, float roll,float yaw);
+
+
 MPU9250 mpu;
 
 void print_roll_pitch_yaw();
@@ -8,29 +24,36 @@ void print_calibration();
 
 void setup() {
     Serial.begin(115200);
+    SerialBT.begin("Hobbywerkerei"); //Name des ESP32
+    postInfo("ESP32 ist bereit...");
+    
     Wire.begin();
     delay(2000);
 
     if (!mpu.setup(0x68)) {  // change to your own address
         while (1) {
             Serial.println("MPU connection failed. Please check your connection with `connection_check` example.");
-            delay(5000);
+            postError("MPU connection failed.");
+            delay(2000);
+            postError("Check I2C connection.");
+            delay(2000);
         }
     }
 
     // calibrate anytime you want to
-    Serial.println("Accel Gyro calibration will start in 5sec.");
-    Serial.println("Please leave the device still on the flat plane.");
+    postInfo("Gyro calibration in 5sec.");
+    
     mpu.verbose(true);
     delay(5000);
+    postInfo("Calibration...");
     mpu.calibrateAccelGyro();
-
-    Serial.println("Mag calibration will start in 5sec.");
-    Serial.println("Please Wave device in a figure eight until done.");
+    postInfo("OK");
+    delay(2000);
+    postInfo("Mag calibration will start in 5sec");
     delay(5000);
+    postInfo(" Wave device figure 8");
     mpu.calibrateMag();
-
-    print_calibration();
+    postInfo("OK");
     mpu.verbose(false);
 }
 int count =0;
@@ -50,18 +73,23 @@ void loop() {
         pitch = pitch *(1.0-lowPassWeight) + mpu.getPitch() * lowPassWeight;
         yaw = yaw *(1.0-lowPassWeight) + mpu.getYaw() * lowPassWeight;
         
-        if (millis() > prev_ms + 25) {
+        if (millis() > prev_ms + 10) {
           count++;
-          if (count == 0)
-            {
-              rollInit=roll;
-              pitchInit=pitch;
-              yawInit=yaw;
-            } 
-            print_roll_pitch_yaw();
-            prev_ms = millis();
+          if (count < 100)
+          {
+            postInfo("Init, please wait...");
+            rollInit=roll;
+            pitchInit=pitch;
+            yawInit=yaw;
+          } 
+          else
+          {
+            postValues(roll, pitch, yaw);
+          }
+          prev_ms = millis();
         }
     }
+    delay(1);
 }
 
 void print_roll_pitch_yaw() {
@@ -103,4 +131,51 @@ void print_calibration() {
     Serial.print(", ");
     Serial.print(mpu.getMagScaleZ());
     Serial.println();
+}
+
+String messageTypeToString(MsgType mType)
+{
+  switch(mType)
+  {
+    case MsgType::info:{ return msgTokenInfo; }
+    case MsgType::error: {return msgTokenError; }
+    case MsgType::imu: {return msgTokenImu;}
+    default: 
+      return msgTokenInvalid;
+  }
+}
+
+
+String  value2Message(float pitch, float roll,float yaw)
+{
+  return String(pitch,1) + msgDelimiter+ String(roll,1) + msgDelimiter+ String(yaw,1);
+}
+
+void postValues(float pitch, float roll,float yaw)
+{
+  String msg = value2Message( pitch, roll, yaw);
+  postMessage(MsgType::imu, msg);
+}
+
+void postError(String message)
+{
+  postMessage(MsgType::error,  message);
+}
+
+void postInfo(String message)
+{
+  postMessage(MsgType::info,  message);
+}
+
+void postMessage(MsgType mType, String message)
+{
+
+  String msg =  messageTypeToString(mType) + msgDelimiter + message;
+  if (Serial.available()) {
+    Serial.println(msg);
+  }
+
+  if (SerialBT.isReady()) {
+   SerialBT.println(msg);
+  }
 }
