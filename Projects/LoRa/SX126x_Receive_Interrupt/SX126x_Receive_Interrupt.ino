@@ -14,6 +14,7 @@
 #include <pins_arduino.h>
 #include <PubSubClient.h>
 
+
 const char* ssid = "HP-675276";
 const char* password = "SchatziEngele42";
 
@@ -29,7 +30,7 @@ const int mqtt_port = 31883;
 char* outTopic = "lora/esp01/";
 String tempTopic = String(outTopic) + "temperature";
 String humTopic = String(outTopic) + "humidity";
-
+bool isValidMessage(String msg);
 
 void callback(char* topic, byte* payload, unsigned int length) {
   // handle message arrived
@@ -44,6 +45,11 @@ SX1262 radio = new Module(SS, DIO0, RST_LoRa, BUSY_LoRa);
 void DisplayPrint(char* text);
 void DisplayPrint(String text);
 
+long validCount = 0;
+long ErrorCount = 0;
+long CRCErrorCount = 0;
+
+
 void setup() {
   Serial.begin(115200);
   while (!Serial) {
@@ -57,14 +63,12 @@ void setup() {
 client.setCallback(callback);
 
   if (client.connect(topic , mqtt_username, mqtt_password)) {
-    client.publish((const char*)tempTopic.c_str(),"0");
-    client.publish((const char*)humTopic.c_str(),"0");
+    //client.publish((const char*)tempTopic.c_str(),"0");
+    //client.publish((const char*)humTopic.c_str(),"0");
   } else {
       DisplayPrint(String("failed, rc=")+String(client.state()));
       delay(5000);
     }
-
-  
 }
 void setup_wifi() {
   delay(10);
@@ -93,25 +97,39 @@ void setFlag(void) {
   receivedFlag = true;
 }
 
+long lastmillis = millis();
 void loop() {
 
+  if ( (millis()-lastmillis) > (1000 *30))
+  {
+    ESP.restart();
+  } 
+
   if (receivedFlag) {
+    lastmillis = millis();
     receivedFlag = false;
 
     String str;
     int state = radio.readData(str);
     if (state == RADIOLIB_ERR_NONE) {
+      validCount++;
+      
       DisplayPrint(str);
-      double temp = getTemp(str);
-      double hum = getHum(str);
+      if (isValidMessage(str)) {
+        double temp = getTemp(str);
+        double hum = getHum(str);
 
-      DisplayPrint(String(temp)+ "° "+String(hum)+"%" );
-      client.publish((const char*)tempTopic.c_str(),(const char*)String(temp).c_str());
-      client.publish((const char*)humTopic.c_str(),(const char*)String(hum).c_str());
-    } else if (state == RADIOLIB_ERR_CRC_MISMATCH) {
+        DisplayPrint(String(temp)+ "° "+String(hum)+"%" );
+        client.publish((const char*)tempTopic.c_str(),(const char*)String(temp).c_str());
+        client.publish((const char*)humTopic.c_str(),(const char*)String(hum).c_str());
+      }
+    }
+    else if (state == RADIOLIB_ERR_CRC_MISMATCH) {
+      CRCErrorCount++;
       Serial.println(F("CRC error!"));
       DisplayPrint("CRC error!");
     } else {
+      ErrorCount++;
       String err = "failed, code " + String(state);
       DisplayPrint((char*)err.c_str());
     }
@@ -210,6 +228,9 @@ void DisplayPrint(char* text)
      
    s = "Frequency error:\t" + String(radio.getFrequencyError()) + " Hz";
    DisplayText(3,  (char*)s.c_str());      
+
+   s = "Messages :" + String(validCount) +"/"+String(CRCErrorCount)+"/"+String(ErrorCount);
+   DisplayText(4,  (char*)s.c_str());      
   
   display.display();
 }
@@ -221,8 +242,17 @@ void DisplayText(byte line, char* text)
     Serial.println(text);
 }
 
+bool isValidMessage(String msg)
+{
+  //23.79 °C / 52.57 % re
+  int br = msg.lastIndexOf('/');
+  if (br< 5) return false;
+  return true;
+}
+
 double getTemp(String msg)
 {
+  if (!isValidMessage(msg)) return 0.0;
   //23.79 °C / 52.57 % re
   int br = msg.lastIndexOf('/');
   String tempStr = msg.substring(0,br-1);
@@ -232,6 +262,8 @@ double getTemp(String msg)
 double getHum(String msg)
 {
   //23.79 °C / 52.57 % re
+  if (!isValidMessage(msg)) return 0.0;
+
   int br = msg.lastIndexOf('/')+1;
   String tempStr = msg.substring(br,msg.length()-1);
   return tempStr.toDouble();
