@@ -6,6 +6,7 @@
 */
 
 // include the library
+
 #include <RadioLib.h>
 #include <Wire.h>    
 #include "SSD1306Wire.h"
@@ -27,9 +28,8 @@ void setup()
   while(!Serial){ delay(100); }
   InitDisplay();
   InitRadio();
-  BlockingTransmit("Hello Message");
-  
   InitSensor();
+  BlockingTransmit("Hello Message");
   
 }
 volatile bool transmittedFlag = false;
@@ -134,7 +134,7 @@ void InitRadio(void)
   // initialize SX1262 with default settings
    DisplayPrint("Init Radio...");
 
-  int state = radio.begin(868.1, 125.0, 9, 7, RADIOLIB_SX126X_SYNC_WORD_PRIVATE, 18, 8, 1.6, false);
+  int state = radio.begin(868.1, 125.0, 12, 7, RADIOLIB_SX126X_SYNC_WORD_PRIVATE, 21, 8, 1.6, false);
   if (state == RADIOLIB_ERR_NONE) {
     DisplayPrint("Init Radio success.");
   } else {
@@ -154,19 +154,26 @@ void InitSensor()
 {
   Wire1.begin(SEN_SCL, SEN_SDA);
 
-if (! aht.begin(&Wire1)) {
+  if (! aht.begin(&Wire1)) {
     DisplayPrint("Could not find AHT10? Check wiring");
-    transmit("Could not find AHT10? Check wiring");
-    while (1) delay(10);
+    BlockingTransmit("Could not find AHT10? Check wiring");
+    int i = 300;
+    while (i > 0) { delay(10); i--;}
+    reboot() ;
   }
   DisplayPrint("AHT10 found");
 }
+void reboot() {
+  ESP.restart();
+}
 void BlockingTransmit(char* text){
+  radio.finishTransmit();
   transmissionState = radio.startTransmit(text);
   while (!transmittedFlag) ;
   transmittedFlag = true;
   radio.finishTransmit();
   };
+
 /*
 Carrier frequency: 434.0 MHz
 Bandwidth: 125.0 kHz (dual-sideband)
