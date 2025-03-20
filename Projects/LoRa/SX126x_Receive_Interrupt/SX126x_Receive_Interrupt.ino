@@ -59,7 +59,7 @@ void setup() {
   setup_wifi();
   InitRadio();
 
- client.setServer(mqtt_broker, mqtt_port);
+client.setServer(mqtt_broker, mqtt_port);
 client.setCallback(callback);
 
   if (client.connect(topic , mqtt_username, mqtt_password)) {
@@ -76,11 +76,14 @@ void setup_wifi() {
   DisplayPrint(String(ssid) + ": Connecting *");
   WiFi.begin(ssid, password);
 
+  int timout =50;
   while (WiFi.status() != WL_CONNECTED) {
     delay(250);
     DisplayPrint(String(ssid) + ": Connecting");
     delay(250);
     DisplayPrint(String(ssid) + ": Connecting *");
+    timeout--;
+    if (timeout <= 0) ESP.restart();
   }
 
   Serial.println("");
@@ -207,7 +210,8 @@ LoRa CRC: enabled, 2 bytes
   } else {
     Serial.print(F("failed, code "));
     Serial.println(state);
-    while (true);
+    delay(60000);
+    ESP.restart();
   }
 }
 

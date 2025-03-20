@@ -10,10 +10,12 @@
 #include <RadioLib.h>
 #include <Wire.h>    
 #include "SSD1306Wire.h"
+#include "Adafruit_HTU21DF.h"
 #include <pins_arduino.h>
 
 #include <Adafruit_AHT10.h>
 Adafruit_AHT10 aht;
+Adafruit_HTU21DF htu = Adafruit_HTU21DF();
 
 SSD1306Wire display(0x3c, SDA_OLED, SCL_OLED);  
 SX1262 radio = new Module(SS, DIO0, RST_LoRa, BUSY_LoRa);
@@ -43,6 +45,8 @@ void loop()
   aht.getEvent(&humidity, &temp);
 
   String str = String(temp.temperature)+" °C / " + String(humidity.relative_humidity)+ " % rel";
+  DisplayPrint(sm);
+
   transmit((char*)str.c_str());
 }
 
@@ -55,10 +59,14 @@ void setFlag(void)
 
 void transmit(char* msg)
 {
-  
+  int timeout = 100;
+  while (!transmittedFlag)
+  {
+    delay(10);
+    timeout--;
+    if (timeout <= 0) ESP.restart();
+  }
 
-  String sm = "-> " +String(msg);
-  DisplayPrint(sm);
   if (transmissionState != RADIOLIB_ERR_NONE) 
   {
     String s = "failed, code " +String(transmissionState);
@@ -159,10 +167,18 @@ void InitSensor()
     BlockingTransmit("Could not find AHT10? Check wiring");
     int i = 300;
     while (i > 0) { delay(10); i--;}
-    reboot() ;
   }
   DisplayPrint("AHT10 found");
+
+if (! htu.begin(&Wire1)) {
+    DisplayPrint("Could not find htu. Check wiring");
+    BlockingTransmit("Could not find htu. Check wiring");
+    int i = 300;
+    while (i > 0) { delay(10); i--;}
+  }
+  DisplayPrint("HTU found");
 }
+
 void reboot() {
   ESP.restart();
 }
